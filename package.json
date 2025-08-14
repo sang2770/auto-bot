@@ -1,0 +1,71 @@
+{
+  "name": "auto-bot",
+  "version": "1.0.0",
+  "description": "Auto Bot 78Win - Automated gaming assistant for 78Win platform with Chrome extension integration",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build-win": "electron-builder --win portable --x64",
+    "build-mac": "electron-builder --mac",
+    "build-linux": "electron-builder --linux",
+    "dist": "electron-builder --publish=never"
+  },
+  "keywords": [],
+  "author": "Auto Bot Developer",
+  "license": "ISC",
+  "dependencies": {
+    "puppeteer": "^24.16.2",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "electron": "^37.2.6",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.autobot.gambling",
+    "productName": "Auto Bot 78Win",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "automation.js",
+      "package.json",
+      "renderer/**/*",
+      "bot-tele/**/*",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "bot-tele",
+        "to": "bot-tele"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "requestedExecutionLevel": "requireAdministrator"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Utility"
+    },
+    "portable": {
+      "artifactName": "AutoBot-78Win-Portable-${version}.${ext}"
+    }
+  }
+}

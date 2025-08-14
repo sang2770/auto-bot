@@ -1,0 +1,397 @@
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const path = require('path');
+const fs = require('fs');
+const { app } = require('electron');
+
+puppeteer.use(StealthPlugin());
+
+const WebSocket = require('ws');
+
+// Handle portable executable paths
+const isDev = process.env.NODE_ENV === 'development' || (app && !app.isPackaged);
+const appPath = isDev ? __dirname : path.dirname(process.execPath);
+const extensionPath = path.join(__dirname, 'extension');
+
+function sleep(s) {
+    return new Promise(resolve => setTimeout(resolve, s * 1000));
+}
+let currentWebSocket = null;
+let currentBrowser = null; // Track current browser instance
+const CONFIG_FILE = path.join(appPath, 'config.json');
+function loadConfig() {
+    try {
+        if (fs.existsSync(CONFIG_FILE)) {
+            const data = fs.readFileSync(CONFIG_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+        return {};
+    } catch (error) {
+        console.error('Error loading config:', error);
+        return {};
+    }
+}
+
+function startSocketServer() {
+    const wss = new WebSocket.Server({ port: 8080 });
+    console.log('WebSocket server started on ws://localhost:8080');
+
+    wss.on('connection', (ws) => {
+        console.log('Extension connected');
+        currentWebSocket = ws;
+
+        ws.on('message', (message) => {
+            try {
+                const data = JSON.parse(message.toString());
+                console.log('From Extension:', data);
+                handleExtensionMessage(data);
+            } catch (error) {
+                console.error('Error parsing message from extension:', error);
+            }
+        });
+
+        ws.on('close', () => {
+            console.log('Extension disconnected');
+            currentWebSocket = null;
+        });
+
+        // Send connection confirmation
+        ws.send(JSON.stringify({
+            action: 'connected',
+            message: 'WebSocket connection established'
+        }));
+
+        // Load initial config and send to extension
+        const config = loadConfig();
+        ws.send(JSON.stringify({
+            action: 'configUpdate',
+            config: config.bot || {}
+        }));
+
+        // runNotification
+        ws.send(JSON.stringify({
+            action: 'runNotification',
+            message: 'Automation app started',
+            timestamp: Date.now()
+        }));
+    });
+
+    return wss;
+}
+
+function handleExtensionMessage(data) {
+    switch (data.action) {
+        case 'configUpdate':
+            console.log('Extension config updated:', data.config);
+            break;
+        case 'maintenanceDetected':
+            console.log('🚨 Maintenance detected by extension:', data.message);
+            handleMaintenanceRestart(data);
+            break;
+        case 'extensionConnected':
+            console.log('Extension connected from:', data.url);
+            break;
+        default:
+            console.log('Unknown action from extension:', data.action);
+    }
+}
+
+async function handleMaintenanceRestart(data) {
+    console.log('🛠️ Handling maintenance restart request...');
+
+    // Close existing browser instance if it exists
+    if (currentBrowser) {
+        console.log('🔄 Closing existing browser instance...');
+        try {
+            await closeBrowserSafely(currentBrowser);
+            console.log('✅ Old browser instance closed successfully with data cleanup');
+        } catch (error) {
+            console.error('⚠️ Error closing old browser instance:', error);
+        }
+        currentBrowser = null;
+    }
+
+    // Load current config to get credentials
+    const config = loadConfig();
+    if (!config.credentials || !config.credentials.username || !config.credentials.password) {
+        console.error('❌ Cannot restart - no saved credentials found');
+        return;
+    }
+
+    // Notify that we're restarting
+    sendMessageToExtension({
+        action: 'maintenanceRestarting',
+        message: 'Automation is restarting due to maintenance detection',
+        timestamp: Date.now()
+    });
+
+    // Wait a bit before restarting to ensure old browser is fully closed
+    await sleep(5);
+
+    console.log('🔄 Restarting automation due to maintenance...');
+    try {
+        // Start automation again with saved credentials
+        await startAutomation(config.credentials.username, config.credentials.password);
+        console.log('✅ Automation restarted successfully after maintenance');
+    } catch (error) {
+        console.error('❌ Error restarting automation after maintenance:', error);
+
+        // Notify extension of restart failure
+        sendMessageToExtension({
+            action: 'maintenanceRestartFailed',
+            message: 'Failed to restart automation after maintenance',
+            error: error.message,
+            timestamp: Date.now()
+        });
+    }
+}
+
+async function cleanBrowserData(browser) {
+    if (!browser) return;
+
+    try {
+        console.log('🧹 Cleaning browser data...');
+
+        // Get all pages and close them
+        const pages = await browser.pages();
+        for (const page of pages) {
+            try {
+                // Clear storage data
+                await page.evaluate(() => {
+                    // Clear localStorage
+                    if (window.localStorage) {
+                        window.localStorage.clear();
+                    }
+
+                    // Clear sessionStorage
+                    if (window.sessionStorage) {
+                        window.sessionStorage.clear();
+                    }
+
+                    // Clear cookies
+                    if (document.cookie) {
+                        document.cookie.split(";").forEach(function (c) {
+                            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                        });
+                    }
+
+                    // Clear cache if available
+                    if ('caches' in window) {
+                        caches.keys().then(function (names) {
+                            names.forEach(function (name) {
+                                caches.delete(name);
+                            });
+                        });
+                    }
+                });
+
+                await page.close();
+            } catch (pageError) {
+                console.warn('⚠️ Error cleaning page data:', pageError.message);
+            }
+        }
+
+        // Clear browser context data
+        const context = browser.defaultBrowserContext();
+        if (context) {
+            try {
+                // Clear cookies
+                await context.clearPermissionOverrides();
+            } catch (contextError) {
+                console.warn('⚠️ Error clearing context permissions:', contextError.message);
+            }
+        }
+
+        console.log('✅ Browser data cleaned successfully');
+    } catch (error) {
+        console.error('❌ Error during browser data cleanup:', error);
+    }
+}
+
+async function closeBrowserSafely(browser) {
+    if (!browser) return;
+
+    try {
+        console.log('🔄 Safely closing browser with data cleanup...');
+
+        // Clean browser data first
+        await cleanBrowserData(browser);
+
+        // Wait a bit to ensure cleanup completes
+        await sleep(1);
+
+        // Close the browser
+        await browser.close();
+
+        console.log('✅ Browser closed safely with data cleanup');
+    } catch (error) {
+        console.error('❌ Error during safe browser closure:', error);
+
+        // Force close if normal closure fails
+        try {
+            await browser.close();
+        } catch (forceCloseError) {
+            console.error('❌ Error force closing browser:', forceCloseError);
+        }
+    }
+}
+
+// Cleanup function for app exit
+async function cleanupOnExit() {
+    console.log('🧹 Performing cleanup before exit...');
+
+    if (currentBrowser) {
+        try {
+            await closeBrowserSafely(currentBrowser);
+            currentBrowser = null;
+        } catch (error) {
+            console.error('❌ Error during exit cleanup:', error);
+        }
+    }
+
+    console.log('✅ Cleanup completed');
+}
+
+// Register cleanup handlers
+process.on('exit', () => {
+    console.log('Process exiting...');
+});
+
+process.on('SIGINT', async () => {
+    console.log('Received SIGINT, cleaning up...');
+    await cleanupOnExit();
+    process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+    console.log('Received SIGTERM, cleaning up...');
+    await cleanupOnExit();
+    process.exit(0);
+});
+
+process.on('uncaughtException', async (error) => {
+    console.error('Uncaught exception:', error);
+    await cleanupOnExit();
+    process.exit(1);
+});
+
+function sendMessageToExtension(message) {
+    if (currentWebSocket && currentWebSocket.readyState === WebSocket.OPEN) {
+        currentWebSocket.send(JSON.stringify(message));
+        return true;
+    } else {
+        console.log('Extension not connected');
+        return false;
+    }
+}
+
+async function startAutomation(username, password) {
+    // Close existing browser if any
+    if (currentBrowser) {
+        console.log('🔄 Closing existing browser before starting new automation...');
+        try {
+            await closeBrowserSafely(currentBrowser);
+        } catch (error) {
+            console.error('⚠️ Error closing existing browser:', error);
+        }
+        currentBrowser = null;
+    }
+
+    const browser = await puppeteer.launch({
+        headless: false,
+        executablePath: puppeteer.executablePath(),
+        args: [
+            `--disable-blink-features=AutomationControlled`,
+            `--disable-infobars`,
+            `--no-sandbox`,
+            `--disable-setuid-sandbox`,
+            `--disable-web-security`,
+            `--disable-features=VizDisplayCompositor`,
+            `--disable-background-networking`,
+            `--disable-background-timer-throttling`,
+            `--disable-backgrounding-occluded-windows`,
+            `--disable-renderer-backgrounding`,
+            `--disable-field-trial-config`,
+            `--disable-ipc-flooding-protection`,
+            `--no-first-run`,
+            `--no-default-browser-check`,
+            `--disable-default-apps`,
+            `--disable-sync`,
+            `--disable-translate`,
+            `--disable-plugins-discovery`,
+            `--disable-preconnect`,
+            `--disable-extensions-file-access-check`,
+            `--aggressive-cache-discard`,
+            `--memory-pressure-off`,
+            `--load-extension=${extensionPath}`,
+            `--disable-extensions-except=${extensionPath}`
+        ],
+        ignoreDefaultArgs: ['--disable-extensions'],
+        userDataDir: null // Use temporary profile that gets deleted on close
+    });
+
+    // Store browser instance globally for cleanup
+    currentBrowser = browser;
+    console.log('🌐 New browser instance created and stored');
+
+    const page = await browser.newPage();
+
+    try {
+        await page.goto('https://www.78winc3.net/', { waitUntil: 'domcontentloaded' });
+        await sleep(5);
+        // close modal if exists
+        const modalSelector = '.ad-center .close';
+        const modal = await page.$(modalSelector);
+        if (modal) {
+            await modal.click();
+        }
+
+        // Bấm login button
+        await page.click('.header-btn.login');
+
+        // Nhập thông tin
+        await page.type('#login', username, { delay: 50 });
+        await sleep(5);
+        await page.type('#password', password, { delay: 50 });
+
+
+        // class nrc-form nrc-form-block has text "Đăng nhập"
+        const loginButtonSelector = '.nrc-form.nrc-form-block button';
+        await page.waitForSelector(loginButtonSelector);
+        await page.click(loginButtonSelector);
+        // wait button logout
+        await page.waitForSelector('.header-btn.logout', { timeout: 10000 });
+        // redirect to game page
+        await page.goto('https://www.78winc3.net/gamelobby/live', { waitUntil: 'domcontentloaded' });
+        await sleep(5);
+        // click data-subprovider="SEXYBCRT" with js
+        await page.evaluate(() => {
+            const button = document.querySelector('[data-subprovider="SEXYBCRT"] button');
+            console.log('Button found:', button);
+            if (button) {
+                button.click();
+            }
+        });
+
+        // Wait a bit for the game to load
+        await sleep(3);
+        return { success: true, message: 'Login automation completed and notification started' };
+
+    } catch (error) {
+        console.error('❌ Error during automation process:', error);
+
+        // If automation fails, clean up the browser instance
+        if (currentBrowser) {
+            try {
+                await closeBrowserSafely(currentBrowser);
+            } catch (closeError) {
+                console.error('⚠️ Error closing browser after automation failure:', closeError);
+            }
+            currentBrowser = null;
+        }
+
+        throw error; // Re-throw the error for the caller to handle
+    }
+}
+
+module.exports = { startAutomation, startSocketServer, sendMessageToExtension };

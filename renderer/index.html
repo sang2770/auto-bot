@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Auto Login 78winc3</title>
+    <style>
+      body {
+        background: #f5f7fa;
+        font-family: "Segoe UI", Arial, sans-serif;
+        padding: 20px;
+        margin: 0;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      h2 {
+        color: #333;
+        margin-bottom: 24px;
+        text-align: center;
+      }
+      h3 {
+        color: #555;
+        margin: 16px 0 8px 0;
+        border-bottom: 2px solid #0078d7;
+        padding-bottom: 4px;
+      }
+      .section {
+        background: white;
+        padding: 20px;
+        margin: 16px 0;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      input {
+        width: 100%;
+        max-width: 300px;
+        padding: 10px;
+        margin: 8px 0;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border 0.2s;
+        box-sizing: border-box;
+      }
+      input:focus {
+        border: 1.5px solid #0078d7;
+        outline: none;
+      }
+      button {
+        width: 100%;
+        max-width: 320px;
+        padding: 12px;
+        background: #0078d7;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        margin-top: 12px;
+        transition: background 0.2s;
+      }
+      button:hover {
+        background: #005fa3;
+      }
+      button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+      #status {
+        margin-top: 20px;
+        padding: 10px;
+        background: #e8f4f8;
+        border-radius: 4px;
+        font-size: 14px;
+        color: #333;
+        min-height: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Auto Login & Bot Control</h2>
+
+    <!-- Login Section -->
+    <div class="section">
+      <h3>Login Credentials</h3>
+      <input id="username" placeholder="Username" /><br />
+      <input id="password" type="password" placeholder="Password" /><br />
+      <button id="start">Start Login</button>
+    </div>
+
+    <!-- Bot Configuration -->
+    <div class="section">
+      <h3>Bot Configuration</h3>
+      <input
+        id="notificationTime"
+        type="number"
+        placeholder="Notification Time (minutes)"
+        value="2"
+      /><br />
+      <input id="chatIds" placeholder="Main Chat IDs (comma separated)" /><br />
+      <input
+        id="chatFakeIds"
+        placeholder="Fake Chat IDs (comma separated)"
+      /><br />
+      <input
+        id="chatReportIds"
+        placeholder="Report Chat IDs (comma separated)"
+      /><br />
+      <button id="saveConfig">Save Configuration</button>
+    </div>
+    <div id="status"></div>
+    <script src="renderer.js"></script>
+  </body>
+</html>
