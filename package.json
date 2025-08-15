@@ -36,7 +36,6 @@
       "automation.js",
       "package.json",
       "renderer/**/*",
-      "extension/**/*",
       "node_modules/**/*"
     ],
     "extraResources": [

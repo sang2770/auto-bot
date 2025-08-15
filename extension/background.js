@@ -6,12 +6,13 @@ function initializeWebSocketCommunication() {
   // Inject communication script into all tabs
   chrome.tabs.query({}, (tabs) => {
     tabs.forEach((tab) => {
-      if (tab.url && (tab.url.startsWith('http') || tab.url.startsWith('https'))) {
+      if (tab.url && (tab.url.startsWith('http') || tab.url.startsWith('https')) && tab.url.includes('bpweb')) {
         chrome.scripting.executeScript({
           target: { tabId: tab.id },
           files: ['communication.js']
-        }).catch(() => {
+        }).catch((e) => {
           // Ignore injection errors for tabs that don't allow it
+          console.log("Error injecting script:", e);
         });
       }
     });
@@ -19,8 +20,8 @@ function initializeWebSocketCommunication() {
 }
 
 // Initialize when extension starts
-chrome.runtime.onStartup.addListener(() => {
-  console.log('Extension starting up...');
+chrome.tabs.onUpdated.addListener(() => {
+  console.log('Extension updated...');
   initializeWebSocketCommunication();
 });
 
@@ -109,8 +110,6 @@ async function handleConfigUpdate(config) {
 
   // Send config update to all tabs
   chrome.tabs.query({}, (tabs) => {
-    console.log("tabs found:", tabs.length, tabs, config);
-
     tabs.forEach((tab) => {
       chrome.tabs.sendMessage(tab.id, {
         type: 'configUpdate',

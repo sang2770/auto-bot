@@ -11,6 +11,8 @@ let notificationTime = 2; // Default to 2 minutes
 let runTimeout = null;
 let isProcessing = false;
 let maintenanceObserver = null;
+let messageIds = [];
+const bot = new BotManager();
 
 // Maintenance detection function
 function startMaintenanceMonitoring() {
@@ -56,6 +58,15 @@ async function handleMaintenanceDetected() {
   if (maintenanceObserver) {
     maintenanceObserver.disconnect();
     maintenanceObserver = null;
+  }
+
+  // recall message
+  if (messageIds) {
+    messageIds.forEach(message => {
+      if (bot) {
+        bot.recallMessage(message.chatId, message.messageId);
+      }
+    });
   }
 
   // Notify the automation app about maintenance
@@ -131,11 +142,16 @@ async function handleConfigUpdate(config) {
       }
       return Array.isArray(str) ? str : [];
     };
+    const chatIds = parseIds(config.chatIds);
+    const chatFakeIds = parseIds(config.chatFakeIds);
+    const chatReportIds = parseIds(config.chatReportIds);
+
+    chrome.storage.local.set({ chatIds, chatFakeIds, chatReportIds });
 
     bot.updateChatIds(
-      parseIds(config.chatIds),
-      parseIds(config.chatFakeIds),
-      parseIds(config.chatReportIds)
+      chatIds,
+      chatFakeIds,
+      chatReportIds
     );
   }
 }
@@ -180,7 +196,6 @@ setInterval(() => {
   );
 }, 60 * 1000);
 
-const bot = new BotManager();
 
 chrome.runtime.onMessage.addListener(async (message) => {
   console.log("Received message:", message);
@@ -914,9 +929,8 @@ function observeGameResult(callback) {
   });
 }
 
-
-
 async function joinRoom() {
+  messageIds = [];
   await sleep(5);
   const curentUrl = window.location.href;
   if (isProcessing || !curentUrl.includes("bpweb")) return;
@@ -1009,10 +1023,11 @@ async function joinRoom() {
     });
   }
   // Run both main and fake group tasks at the same time
-  await Promise.all([
-    bot.runTasksForMainGroup(() => { }, tasks, true),
-    bot.runTasksForFakeGroup(() => { }, tasks, true),
-  ]);
+  messageIds.push(...(await Promise.all([
+    bot.runTasksForMainGroup((res) => { console.log(res);
+     }, tasks, true),
+    bot.runTasksForFakeGroup((res) => { console.log(res);}, tasks, true),
+  ])).flat());
   tasks = [];
   const fakeTasks = [];
 
@@ -1038,13 +1053,16 @@ async function joinRoom() {
     data: roomCapture,
     content: `CÁC BẠN VÀO ${titleRoom} CHỜ LỆNH NHÉ`,
   });
-  await bot.runTasksForReportGroup(
+  messageIds.push(...await bot.runTasksForReportGroup(
     (status) => {
       console.log("Report task completed with status:", status);
     },
     taskReport,
     true
-  );
+  ));
+
+  console.log("Message IDs:", messageIds);
+
   rooms[randomIndex].click();
 
   await sleep(3 * 60); // Chờ 3 phút trước khi bắt đầu đặt cược
@@ -1058,7 +1076,7 @@ async function joinRoom() {
   const listTask = ["CON", "CÁI"];
   const currentTask = listTask[Math.floor(Math.random() * listTask.length)];
   const moneyValue = money || 500;
-  await bot.runTasksForMainGroup(
+  messageIds.push(...(await bot.runTasksForMainGroup(
     () => { },
     [
       {
@@ -1071,7 +1089,7 @@ async function joinRoom() {
       },
     ],
     true
-  );
+  )));
 
   // 4. Theo dõi kết quả bằng MutationObserver
   const iframeGame = document.getElementById("iframeGame");
@@ -1198,10 +1216,12 @@ async function joinRoom() {
 
         console.log("Tasks sau khi có kết quả:", tasks, fakeTasks);
         observer.disconnect();
-        await Promise.all([
+        messageIds.push(...(await Promise.all([
           bot.runTasksForMainGroup(() => { }, tasks),
           bot.runTasksForFakeGroup(() => { }, fakeTasks),
-        ]);
+        ])).flat());
+
+        console.log("Message IDs:", messageIds);
 
         isProcessing = false;
         console.log("Rejoining room...");

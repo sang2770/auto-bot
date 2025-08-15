@@ -11,7 +11,7 @@ const WebSocket = require('ws');
 // Handle portable executable paths
 const isDev = process.env.NODE_ENV === 'development' || (app && !app.isPackaged);
 const appPath = isDev ? __dirname : path.dirname(process.execPath);
-const extensionPath = path.join(__dirname, 'extension');
+const extensionPath = isDev ? path.join(__dirname, 'extension') : path.join(process.resourcesPath, 'extension');
 
 function sleep(s) {
     return new Promise(resolve => setTimeout(resolve, s * 1000));
@@ -146,80 +146,11 @@ async function handleMaintenanceRestart(data) {
     }
 }
 
-async function cleanBrowserData(browser) {
-    if (!browser) return;
-
-    try {
-        console.log('🧹 Cleaning browser data...');
-
-        // Get all pages and close them
-        const pages = await browser.pages();
-        for (const page of pages) {
-            try {
-                // Clear storage data
-                await page.evaluate(() => {
-                    // Clear localStorage
-                    if (window.localStorage) {
-                        window.localStorage.clear();
-                    }
-
-                    // Clear sessionStorage
-                    if (window.sessionStorage) {
-                        window.sessionStorage.clear();
-                    }
-
-                    // Clear cookies
-                    if (document.cookie) {
-                        document.cookie.split(";").forEach(function (c) {
-                            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-                        });
-                    }
-
-                    // Clear cache if available
-                    if ('caches' in window) {
-                        caches.keys().then(function (names) {
-                            names.forEach(function (name) {
-                                caches.delete(name);
-                            });
-                        });
-                    }
-                });
-
-                await page.close();
-            } catch (pageError) {
-                console.warn('⚠️ Error cleaning page data:', pageError.message);
-            }
-        }
-
-        // Clear browser context data
-        const context = browser.defaultBrowserContext();
-        if (context) {
-            try {
-                // Clear cookies
-                await context.clearPermissionOverrides();
-            } catch (contextError) {
-                console.warn('⚠️ Error clearing context permissions:', contextError.message);
-            }
-        }
-
-        console.log('✅ Browser data cleaned successfully');
-    } catch (error) {
-        console.error('❌ Error during browser data cleanup:', error);
-    }
-}
-
 async function closeBrowserSafely(browser) {
     if (!browser) return;
 
     try {
         console.log('🔄 Safely closing browser with data cleanup...');
-
-        // Clean browser data first
-        await cleanBrowserData(browser);
-
-        // Wait a bit to ensure cleanup completes
-        await sleep(1);
-
         // Close the browser
         await browser.close();
 
@@ -338,7 +269,7 @@ async function startAutomation(username, password) {
 
     try {
         await page.goto('https://www.78winc3.net/', { waitUntil: 'domcontentloaded' });
-        await sleep(5);
+        await sleep(20);
         // close modal if exists
         const modalSelector = '.ad-center .close';
         const modal = await page.$(modalSelector);
@@ -363,7 +294,7 @@ async function startAutomation(username, password) {
         await page.waitForSelector('.header-btn.logout', { timeout: 10000 });
         // redirect to game page
         await page.goto('https://www.78winc3.net/gamelobby/live', { waitUntil: 'domcontentloaded' });
-        await sleep(5);
+        await sleep(20);
         // click data-subprovider="SEXYBCRT" with js
         await page.evaluate(() => {
             const button = document.querySelector('[data-subprovider="SEXYBCRT"] button');

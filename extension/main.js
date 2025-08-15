@@ -84,11 +84,6 @@ let htmlString = `
 // Khởi tạo giao diện chính
 // ==========================
 (async () => {
-  // Load communication script
-  const script = document.createElement('script');
-  script.src = chrome.runtime.getURL('communication.js');
-  document.head.appendChild(script);
-
   const storage = await chrome.storage.local.get(['chatIds', 'chatFakeIds', 'chatReportIds']);
   const chatIds = storage.chatIds || [];
   const chatFakeIds = storage.chatFakeIds || [];

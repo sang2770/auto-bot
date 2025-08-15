@@ -144,7 +144,6 @@ const currentUrl = window.location.href;
 console.log('Initializing WebSocket communication for:', currentUrl);
 
 if (currentUrl.includes('bpweb')) {
-
     // Initialize when DOM is ready or immediately if already loaded
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {

@@ -3,7 +3,7 @@
   "name": "Simulate Bet",
   "description": "Simulate",
   "version": "1.0",
-  "permissions": ["tabs", "activeTab", "storage", "scripting"],
+  "permissions": ["tabs", "storage", "scripting"],
   "background": {
     "service_worker": "background.js"
   },

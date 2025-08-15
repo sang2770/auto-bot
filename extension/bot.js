@@ -54,6 +54,8 @@ class BotManager {
     }
 
     async sendVideo(chatId, filePath, caption = "") {
+        console.log("filePath", filePath);
+        
         const blob = await this._getFileBlob(filePath);
         if (!blob) return { ok: false, error: `Không tìm thấy file: ${filePath}` };
 
@@ -63,6 +65,10 @@ class BotManager {
         if (caption) form.append("caption", caption);
 
         return this._sendRequestForm("sendVideo", form);
+    }
+
+    async recallMessage(chatId, messageId) {
+        return this._sendRequestJSON("deleteMessage", { chat_id: chatId, message_id: messageId });
     }
 
     getStartTasks() {
@@ -95,6 +101,8 @@ class BotManager {
                     statusCallback(`⚠️ Loại không hỗ trợ: ${task.type}`);
                     continue;
                 }
+                console.log("res", res);
+                
 
                 statusCallback(JSON.stringify(res));
                 await this._delay(2000);
@@ -110,7 +118,9 @@ class BotManager {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body)
             });
-            return await res.json();
+            const response = await res.json();
+            console.log("_sendRequestJSON", response);
+            return response ;
         } catch (err) {
             return { ok: false, error: err.message };
         }
@@ -187,6 +197,8 @@ class BotManager {
             tasks.push(...this.config.endTasks);
         }
 
+        const messageIds = [];
+
         for (let task of tasks) {
             for (let chatId of chatIds) {
                 statusCallback(`📤 Gửi ${task.type} đến ${chatId}...`);
@@ -204,11 +216,16 @@ class BotManager {
                     statusCallback(`⚠️ Loại không hỗ trợ: ${task.type}`);
                     continue;
                 }
-
+                console.log("res", res);
+                
                 statusCallback(JSON.stringify(res));
+                if (res.ok) {
+                    messageIds.push({ chatId, messageId: res.message_id });
+                }
                 await this._delay(2000);
             }
         }
         statusCallback("✅ Hoàn thành gửi tin!");
+        return messageIds;
     }
 }
