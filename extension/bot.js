@@ -55,7 +55,7 @@ class BotManager {
 
     async sendVideo(chatId, filePath, caption = "") {
         console.log("filePath", filePath);
-        
+
         const blob = await this._getFileBlob(filePath);
         if (!blob) return { ok: false, error: `Không tìm thấy file: ${filePath}` };
 
@@ -102,7 +102,7 @@ class BotManager {
                     continue;
                 }
                 console.log("res", res);
-                
+
 
                 statusCallback(JSON.stringify(res));
                 await this._delay(2000);
@@ -120,7 +120,7 @@ class BotManager {
             });
             const response = await res.json();
             console.log("_sendRequestJSON", response);
-            return response ;
+            return response;
         } catch (err) {
             return { ok: false, error: err.message };
         }
@@ -217,10 +217,10 @@ class BotManager {
                     continue;
                 }
                 console.log("res", res);
-                
+
                 statusCallback(JSON.stringify(res));
                 if (res.ok) {
-                    messageIds.push({ chatId, messageId: res.message_id });
+                    messageIds.push({ chatId, messageId: res?.result?.message_id });
                 }
                 await this._delay(2000);
             }
