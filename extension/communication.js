@@ -128,8 +128,7 @@ class WebSocketCommunication {
     // Public methods for the extension to use
     notifyAppOfAction(action, data) {
         this.sendMessage({
-            action: 'extensionAction',
-            actionType: action,
+            action,
             data: data,
             timestamp: Date.now()
         });

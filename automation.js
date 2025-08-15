@@ -118,13 +118,6 @@ async function handleMaintenanceRestart(data) {
         return;
     }
 
-    // Notify that we're restarting
-    sendMessageToExtension({
-        action: 'maintenanceRestarting',
-        message: 'Automation is restarting due to maintenance detection',
-        timestamp: Date.now()
-    });
-
     // Wait a bit before restarting to ensure old browser is fully closed
     await sleep(5);
 
@@ -135,7 +128,6 @@ async function handleMaintenanceRestart(data) {
         console.log('✅ Automation restarted successfully after maintenance');
     } catch (error) {
         console.error('❌ Error restarting automation after maintenance:', error);
-
         // Notify extension of restart failure
         sendMessageToExtension({
             action: 'maintenanceRestartFailed',

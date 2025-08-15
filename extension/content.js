@@ -76,13 +76,15 @@ async function handleMaintenanceDetected() {
       timestamp: Date.now(),
       message: 'Maintenance page detected, requesting restart'
     });
+  } else {
+    // Send message to background script to notify main app
+    chrome.runtime.sendMessage({
+      type: 'maintenanceDetected',
+      message: 'Maintenance detected, requesting automation restart'
+    });
   }
 
-  // Send message to background script to notify main app
-  chrome.runtime.sendMessage({
-    type: 'maintenanceDetected',
-    message: 'Maintenance detected, requesting automation restart'
-  });
+
 
   console.log('🔄 Maintenance restart sequence initiated');
 }
@@ -1024,9 +1026,10 @@ async function joinRoom() {
   }
   // Run both main and fake group tasks at the same time
   messageIds.push(...(await Promise.all([
-    bot.runTasksForMainGroup((res) => { console.log(res);
-     }, tasks, true),
-    bot.runTasksForFakeGroup((res) => { console.log(res);}, tasks, true),
+    bot.runTasksForMainGroup((res) => {
+      console.log(res);
+    }, tasks, true),
+    bot.runTasksForFakeGroup((res) => { console.log(res); }, tasks, true),
   ])).flat());
   tasks = [];
   const fakeTasks = [];
