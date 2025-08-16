@@ -15,6 +15,7 @@
   "author": "Auto Bot Developer",
   "license": "ISC",
   "dependencies": {
+    "proxy-chain": "^2.5.9",
     "puppeteer": "^24.16.2",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
@@ -36,7 +37,8 @@
       "automation.js",
       "package.json",
       "renderer/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "assets/**/*"
     ],
     "extraResources": [
       {
@@ -52,8 +54,7 @@
             "x64"
           ]
         }
-      ],
-      "requestedExecutionLevel": "requireAdministrator"
+      ]
     },
     "mac": {
       "target": "dmg",

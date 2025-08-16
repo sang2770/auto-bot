@@ -1,5 +1,6 @@
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const ProxyChain = require('proxy-chain');
 const path = require('path');
 const fs = require('fs');
 const { app } = require('electron');
@@ -18,6 +19,7 @@ function sleep(s) {
 }
 let currentWebSocket = null;
 let currentBrowser = null; // Track current browser instance
+let anonymizedProxyUrl = null; // Track anonymized proxy URL
 const CONFIG_FILE = path.join(appPath, 'config.json');
 function loadConfig() {
     try {
@@ -124,7 +126,7 @@ async function handleMaintenanceRestart(data) {
     console.log('🔄 Restarting automation due to maintenance...');
     try {
         // Start automation again with saved credentials
-        await startAutomation(config.credentials.username, config.credentials.password);
+        await startAutomation(config.credentials.username, config.credentials.password, config.credentials.proxyServer);
         console.log('✅ Automation restarted successfully after maintenance');
     } catch (error) {
         console.error('❌ Error restarting automation after maintenance:', error);
@@ -145,6 +147,18 @@ async function closeBrowserSafely(browser) {
         console.log('🔄 Safely closing browser with data cleanup...');
         // Close the browser
         await browser.close();
+
+        // Close anonymized proxy if it exists
+        if (anonymizedProxyUrl) {
+            console.log('🔄 Closing anonymized proxy server...');
+            try {
+                await ProxyChain.closeAnonymizedProxy(anonymizedProxyUrl, true);
+                anonymizedProxyUrl = null;
+                console.log('✅ Anonymized proxy closed successfully');
+            } catch (proxyError) {
+                console.error('❌ Error closing anonymized proxy:', proxyError);
+            }
+        }
 
         console.log('✅ Browser closed safely with data cleanup');
     } catch (error) {
@@ -169,6 +183,18 @@ async function cleanupOnExit() {
             currentBrowser = null;
         } catch (error) {
             console.error('❌ Error during exit cleanup:', error);
+        }
+    }
+
+    // Close any remaining anonymized proxies
+    if (anonymizedProxyUrl) {
+        try {
+            console.log('🔄 Closing remaining anonymized proxy...');
+            await ProxyChain.closeAnonymizedProxy(anonymizedProxyUrl, true);
+            anonymizedProxyUrl = null;
+            console.log('✅ Anonymized proxy closed during cleanup');
+        } catch (error) {
+            console.error('❌ Error closing anonymized proxy during cleanup:', error);
         }
     }
 
@@ -208,7 +234,7 @@ function sendMessageToExtension(message) {
     }
 }
 
-async function startAutomation(username, password) {
+async function startAutomation(username, password, proxyServer) {
     // Close existing browser if any
     if (currentBrowser) {
         console.log('🔄 Closing existing browser before starting new automation...');
@@ -220,7 +246,8 @@ async function startAutomation(username, password) {
         currentBrowser = null;
     }
 
-    const browser = await puppeteer.launch({
+    // Prepare launch options
+    const launchOptions = {
         headless: false,
         executablePath: puppeteer.executablePath(),
         args: [
@@ -251,7 +278,43 @@ async function startAutomation(username, password) {
         ],
         ignoreDefaultArgs: ['--disable-extensions'],
         userDataDir: null // Use temporary profile that gets deleted on close
-    });
+    };
+
+    // Add proxy settings if provided
+    if (proxyServer && proxyServer.trim()) {
+        const proxyParts = proxyServer.trim().split(':');
+
+        if (proxyParts.length === 2) {
+            // Basic proxy: ip:port
+            console.log('🌐 Using basic proxy server:', `${proxyParts[0]}:${proxyParts[1]}`);
+            launchOptions.args.push(`--proxy-server=${proxyParts[0]}:${proxyParts[1]}`);
+        } else if (proxyParts.length === 4) {
+            // Authenticated proxy: ip:port:username:password - use proxy-chain
+            const [ip, port, username, password] = proxyParts;
+            console.log('🌐 Creating anonymized proxy for authenticated proxy:', `${ip}:${port} with username: ${username}`);
+
+            try {
+                // Create anonymized proxy that handles authentication
+                anonymizedProxyUrl = await ProxyChain.anonymizeProxy({
+                    url: `http://${username}:${password}@${ip}:${port}`,
+                    port: 0 // Use random available port
+                });
+
+                console.log('✅ Anonymized proxy created:', anonymizedProxyUrl);
+                launchOptions.args.push(`--proxy-server=${anonymizedProxyUrl}`);
+            } catch (proxyError) {
+                console.error('❌ Error creating anonymized proxy:', proxyError);
+                console.log('⚠️ Falling back to basic proxy without authentication');
+                launchOptions.args.push(`--proxy-server=${ip}:${port}`);
+            }
+        } else {
+            console.warn('⚠️ Invalid proxy format, expected ip:port or ip:port:username:password');
+        }
+    } else {
+        console.log('🌐 No proxy server configured');
+    }
+
+    const browser = await puppeteer.launch(launchOptions);
 
     // Store browser instance globally for cleanup
     currentBrowser = browser;

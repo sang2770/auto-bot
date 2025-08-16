@@ -15,30 +15,22 @@ let messageIds = [];
 const bot = new BotManager();
 
 // Maintenance detection function
+let maintenanceCheckInterval = null;
+
 function startMaintenanceMonitoring() {
-  // Stop existing observer if any
-  if (maintenanceObserver) {
-    maintenanceObserver.disconnect();
+  if (maintenanceCheckInterval) {
+    clearInterval(maintenanceCheckInterval);
   }
 
-  // Create new observer for maintenance detection
-  maintenanceObserver = new MutationObserver((mutations) => {
+  maintenanceCheckInterval = setInterval(() => {
     const maintenanceLogout = document.querySelector('.maintenance.logout');
     if (maintenanceLogout) {
       console.log('🚨 Maintenance detected! Stopping current process and restarting...');
       handleMaintenanceDetected();
     }
-  });
+  }, 500); // check mỗi 0.5 giây
 
-  // Start observing the document for maintenance elements
-  maintenanceObserver.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['class']
-  });
-
-  console.log('🔍 Maintenance monitoring started');
+  console.log('🔍 Maintenance monitoring started (interval mode)');
 }
 
 // Handle maintenance detection
@@ -348,7 +340,7 @@ function createMessage(type, text = "", timeout = 1000, endTime = 1000) {
     justify-content: center;
     background-size: 100% 100%;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
-    bottom: 244px;
+    bottom: 300px;
     right: -300px;
     transition: right 0.5s ease;
   `;
@@ -934,10 +926,14 @@ function observeGameResult(callback) {
 async function joinRoom() {
   messageIds = [];
   await sleep(5);
+
   const curentUrl = window.location.href;
   if (isProcessing || !curentUrl.includes("bpweb")) return;
   console.log("joinRoom");
   isProcessing = true;
+
+  // Start maintenance monitoring when joining room
+  startMaintenanceMonitoring();
 
   // Wait for iframeGameHall to be available
   console.log("Waiting for iframeGameHall to be available...");
@@ -961,9 +957,6 @@ async function joinRoom() {
   }
 
   console.log("iframeGameHall found, proceeding with room logic");
-
-  // Start maintenance monitoring when joining room
-  startMaintenanceMonitoring();
 
   // Load chat IDs from storage to ensure we're using the most up-to-date list
   try {

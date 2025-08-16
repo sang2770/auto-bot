@@ -45,6 +45,13 @@
         border: 1.5px solid #0078d7;
         outline: none;
       }
+      input[placeholder*="Proxy"] {
+        border-color: #28a745;
+        background-color: #f8fff9;
+      }
+      input[placeholder*="Proxy"]:focus {
+        border-color: #20c997;
+      }
       button {
         width: 100%;
         max-width: 320px;
@@ -84,6 +91,10 @@
       <h3>Login Credentials</h3>
       <input id="username" placeholder="Username" /><br />
       <input id="password" type="password" placeholder="Password" /><br />
+      <input
+        id="proxyServer"
+        placeholder="Proxy Server (optional): ip:port:username:password"
+      /><br />
       <button id="start">Start Login</button>
     </div>
 

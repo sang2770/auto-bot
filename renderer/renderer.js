@@ -9,6 +9,7 @@ async function loadConfig() {
         if (currentConfig.credentials) {
             document.getElementById('username').value = currentConfig.credentials.username || '';
             document.getElementById('password').value = currentConfig.credentials.password || '';
+            document.getElementById('proxyServer').value = currentConfig.credentials.proxyServer || '';
         }
 
         if (currentConfig.bot) {
@@ -33,15 +34,28 @@ function updateStatus(message) {
 document.getElementById('start').addEventListener('click', async () => {
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
+    const proxyServer = document.getElementById('proxyServer').value.trim();
 
     if (!username || !password) {
         updateStatus('Please enter username and password');
         return;
     }
 
+    // Validate proxy format if provided
+    if (proxyServer && proxyServer.length > 0) {
+        // Support both formats: ip:port and ip:port:username:password
+        const basicProxyPattern = /^.+:\d+$/;
+        const authProxyPattern = /^.+:\d+:.+:.+$/;
+
+        if (!basicProxyPattern.test(proxyServer) && !authProxyPattern.test(proxyServer)) {
+            updateStatus('Invalid proxy format. Use: ip:port or ip:port:username:password');
+            return;
+        }
+    }
+
     try {
         updateStatus('Starting login...');
-        await window.electronAPI.startLogin(username, password);
+        await window.electronAPI.startLogin(username, password, proxyServer);
         updateStatus('Login process started');
     } catch (error) {
         console.error('Login error:', error);
