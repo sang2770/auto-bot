@@ -81,6 +81,12 @@
         color: #333;
         min-height: 20px;
       }
+      label {
+        display: block;
+        margin-top: 12px;
+        font-weight: bold;
+        color: #555;
+      }
     </style>
   </head>
   <body>
@@ -95,28 +101,39 @@
         id="proxyServer"
         placeholder="Proxy Server (optional): ip:port:username:password"
       /><br />
-      <button id="start">Start Login</button>
+      <button id="start">Bắt đầu</button>
     </div>
 
     <!-- Bot Configuration -->
     <div class="section">
       <h3>Bot Configuration</h3>
+      <label for="">Số tiền</label>
+      <input
+        id="money"
+        type="number"
+        placeholder="Money (default: 500)"
+        value="500"
+      /><br />
+      <label for="notificationTime">Thời gian nghỉ (minutes)</label>
       <input
         id="notificationTime"
         type="number"
         placeholder="Notification Time (minutes)"
         value="2"
       /><br />
+      <label for="chatIds">Nhóm chính</label>
       <input id="chatIds" placeholder="Main Chat IDs (comma separated)" /><br />
+      <label for="chatFakeIds">Nhóm phụ</label>
       <input
         id="chatFakeIds"
         placeholder="Fake Chat IDs (comma separated)"
       /><br />
+      <label for="chatReportIds">Nhóm báo bàn</label>
       <input
         id="chatReportIds"
         placeholder="Report Chat IDs (comma separated)"
       /><br />
-      <button id="saveConfig">Save Configuration</button>
+      <button id="saveConfig">Lưu cấu hình</button>
     </div>
     <div id="status"></div>
     <script src="renderer.js"></script>

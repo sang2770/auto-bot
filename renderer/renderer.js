@@ -70,7 +70,8 @@ document.getElementById('saveConfig').addEventListener('click', async () => {
             notificationTime: parseInt(document.getElementById('notificationTime').value) || 2,
             chatIds: document.getElementById('chatIds').value.trim(),
             chatFakeIds: document.getElementById('chatFakeIds').value.trim(),
-            chatReportIds: document.getElementById('chatReportIds').value.trim()
+            chatReportIds: document.getElementById('chatReportIds').value.trim(),
+            money: parseInt(document.getElementById('money').value) || 500
         }
     };
 

@@ -139,8 +139,9 @@ async function handleConfigUpdate(config) {
     const chatIds = parseIds(config.chatIds);
     const chatFakeIds = parseIds(config.chatFakeIds);
     const chatReportIds = parseIds(config.chatReportIds);
+    const money = parseInt(config.money) || 500;
 
-    chrome.storage.local.set({ chatIds, chatFakeIds, chatReportIds });
+    chrome.storage.local.set({ chatIds, chatFakeIds, chatReportIds, money });
 
     bot.updateChatIds(
       chatIds,
@@ -964,6 +965,7 @@ async function joinRoom() {
       "chatIds",
       "chatFakeIds",
       "chatReportIds",
+      "money",
     ]);
 
     // Update all chat ID groups in the bot manager
@@ -972,6 +974,7 @@ async function joinRoom() {
       storage.chatFakeIds || null,
       storage.chatReportIds || null
     );
+    money = storage.money || 500;
 
     console.log("Retrieved chat IDs from storage:");
     console.log("- Main:", storage.chatIds || []);
