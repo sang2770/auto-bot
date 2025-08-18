@@ -323,7 +323,7 @@ async function startAutomation(username, password, proxyServer) {
     const page = await browser.newPage();
 
     try {
-        await page.goto('https://www.78winc3.net/', { waitUntil: 'domcontentloaded' });
+        await page.goto('https://www.78winb.ink/', { waitUntil: 'domcontentloaded' });
         await sleep(20);
         // close modal if exists
         const modalSelector = '.ad-center .close';
@@ -346,9 +346,9 @@ async function startAutomation(username, password, proxyServer) {
         await page.waitForSelector(loginButtonSelector);
         await page.click(loginButtonSelector);
         // wait button logout
-        await page.waitForSelector('.header-btn.logout', { timeout: 10000 });
+        await page.waitForSelector('.header-btn.logout', { timeout: 100000 });
         // redirect to game page
-        await page.goto('https://www.78winc3.net/gamelobby/live', { waitUntil: 'domcontentloaded' });
+        await page.goto('https://www.78winb.ink/gamelobby/live', { waitUntil: 'domcontentloaded' });
         await sleep(20);
         // click data-subprovider="SEXYBCRT" with js
         await page.evaluate(() => {

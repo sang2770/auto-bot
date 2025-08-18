@@ -1198,6 +1198,8 @@ async function joinRoom() {
               ? { type: "photo", content: "", filePath: "media/cl.png" }
               : { type: "text", content: "NGƯNG CA CHỐT LÃI!!!" }
           );
+          createMessage("win", moneyValueTmp + "", 1000, 3000);
+          const gameResultFakeScreenshot = await captureScreen();
           fakeTasks.push({
             type: "text",
             content: `${bestType === "PLAYER" ? "CON" : "CÁI"
@@ -1205,7 +1207,7 @@ async function joinRoom() {
           });
           fakeTasks.push({
             type: "screenshot",
-            data: gameResultScreenshot,
+            data: gameResultFakeScreenshot,
           });
           fakeTasks.push({
             type: "text",
