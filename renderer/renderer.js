@@ -89,5 +89,155 @@ document.getElementById('saveConfig').addEventListener('click', async () => {
     }
 });
 
+// Scheduler functionality
+let schedulerTimes = [];
+
+// Format date for display
+function formatNextRunTime(isoDateString) {
+    const date = new Date(isoDateString);
+    return date.toLocaleString();
+}
+
+// Format remaining time in hours and minutes
+function formatRemainingTime(ms) {
+    const hours = Math.floor(ms / (1000 * 60 * 60));
+    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
+}
+
+// Update the UI with scheduled times
+function updateSchedulerTimesUI() {
+    const container = document.getElementById('scheduledTimes');
+    container.innerHTML = '';
+
+    if (schedulerTimes.length === 0) {
+        container.innerHTML = '<p>No scheduled times added yet.</p>';
+        return;
+    }
+
+    // Sort times chronologically
+    schedulerTimes.sort();
+
+    schedulerTimes.forEach(time => {
+        const timeItem = document.createElement('div');
+        timeItem.className = 'scheduled-time-item';
+
+        const timeText = document.createElement('span');
+        timeText.className = 'time-text';
+        timeText.textContent = time;
+
+        const removeButton = document.createElement('button');
+        removeButton.className = 'remove-time';
+        removeButton.textContent = 'Remove';
+        removeButton.onclick = () => {
+            schedulerTimes = schedulerTimes.filter(t => t !== time);
+            updateSchedulerTimesUI();
+        };
+
+        timeItem.appendChild(timeText);
+        timeItem.appendChild(removeButton);
+        container.appendChild(timeItem);
+    });
+}
+
+// Load scheduler configuration
+async function loadSchedulerConfig() {
+    try {
+        const status = await window.electronAPI.getSchedulerStatus();
+        document.getElementById('schedulerEnabled').checked = status.enabled;
+        schedulerTimes = status.times || [];
+        updateSchedulerTimesUI();
+
+        // Update next run times info
+        updateNextRunInfo(status.nextRunTimes);
+    } catch (error) {
+        console.error('Error loading scheduler config:', error);
+        updateStatus('Error loading scheduler configuration');
+    }
+}
+
+// Update next run information in the UI
+function updateNextRunInfo(nextRunTimes) {
+    const container = document.getElementById('nextRunInfo');
+    container.innerHTML = '';
+
+    if (!nextRunTimes || nextRunTimes.length === 0) {
+        container.innerHTML = '<p>No upcoming scheduled runs.</p>';
+        return;
+    }
+
+    const nextRun = nextRunTimes[0]; // Get the soonest run
+    const formattedTime = formatNextRunTime(nextRun.nextRun);
+    const remainingTime = formatRemainingTime(nextRun.msRemaining);
+
+    container.innerHTML = `<p><strong>Next run:</strong> ${nextRun.time} (${formattedTime})</p>
+                          <p><strong>Time remaining:</strong> ${remainingTime}</p>`;
+}
+
+// Add time button handler
+document.getElementById('addTime').addEventListener('click', () => {
+    const timeInput = document.getElementById('newTime');
+    const time = timeInput.value;
+
+    if (!time) {
+        updateStatus('Please select a time to add');
+        return;
+    }
+
+    if (schedulerTimes.includes(time)) {
+        updateStatus('This time is already scheduled');
+        return;
+    }
+
+    schedulerTimes.push(time);
+    updateSchedulerTimesUI();
+    timeInput.value = '';
+});
+
+// Save scheduler button handler
+document.getElementById('saveScheduler').addEventListener('click', async () => {
+    const enabled = document.getElementById('schedulerEnabled').checked;
+
+    const schedulerSettings = {
+        enabled,
+        times: schedulerTimes
+    };
+
+    try {
+        const result = await window.electronAPI.updateScheduler(schedulerSettings);
+        if (result.success) {
+            updateStatus('Scheduler settings saved successfully');
+            await loadSchedulerConfig(); // Refresh with latest data from main process
+        } else {
+            updateStatus('Failed to save scheduler settings');
+        }
+    } catch (error) {
+        console.error('Save scheduler error:', error);
+        updateStatus('Error saving scheduler settings');
+    }
+});
+
+// Listen for automation status updates
+window.electronAPI.onAutomationStatusUpdate((data) => {
+    console.log('Received automation status update:', data);
+
+    if (data.status === 'stopped' && data.reason === 'singleRunCompleted') {
+        updateStatus(`Automation stopped: One-time run completed at ${new Date(data.timestamp).toLocaleTimeString()}`);
+    } else {
+        updateStatus(`Automation status: ${data.status} - ${data.message}`);
+    }
+});
+
 // Load configuration when page loads
-document.addEventListener('DOMContentLoaded', loadConfig);
+document.addEventListener('DOMContentLoaded', () => {
+    loadConfig();
+    loadSchedulerConfig();
+
+    // Periodically refresh the next run info (every minute)
+    setInterval(async () => {
+        if (document.getElementById('schedulerEnabled').checked) {
+            const status = await window.electronAPI.getSchedulerStatus();
+            updateNextRunInfo(status.nextRunTimes);
+        }
+    }, 60000);
+});

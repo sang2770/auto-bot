@@ -3,6 +3,9 @@ const path = require('path');
 const fs = require('fs');
 const { startAutomation, startSocketServer, sendMessageToExtension } = require('./automation');
 
+// Scheduler timer
+let schedulerTimers = [];
+
 // Handle portable executable paths
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 const appPath = isDev ? __dirname : path.dirname(process.execPath);
@@ -98,9 +101,108 @@ function loadConfig() {
     }
 }
 
+// Function to calculate milliseconds until a specific time today or tomorrow
+function getMillisecondsUntilTime(timeStr) {
+    const now = new Date();
+    const [hours, minutes] = timeStr.split(':').map(Number);
+
+    const targetTime = new Date(now);
+    targetTime.setHours(hours, minutes, 0, 0);
+
+    // If the time is already past for today, schedule for tomorrow
+    if (targetTime <= now) {
+        targetTime.setDate(targetTime.getDate() + 1);
+    }
+
+    return targetTime.getTime() - now.getTime();
+}
+
+// Start the scheduler based on config
+function startScheduler() {
+    // Clear any existing schedulers
+    clearSchedulers();
+
+    const config = loadConfig();
+    if (!config.scheduler || !config.scheduler.enabled || !config.scheduler.times || !config.scheduler.times.length) {
+        log.info('Scheduler is not enabled or no times configured');
+        return;
+    }
+
+    log.info('Starting scheduler with times', { times: config.scheduler.times });
+
+    // Set up timers for each scheduled time
+    config.scheduler.times.forEach(timeStr => {
+        const msUntilTime = getMillisecondsUntilTime(timeStr);
+        const hours = Math.floor(msUntilTime / (1000 * 60 * 60));
+        const minutes = Math.floor((msUntilTime % (1000 * 60 * 60)) / (1000 * 60));
+
+        log.info(`Scheduling automation for ${timeStr}, which is in ${hours} hours and ${minutes} minutes`);
+
+        const timer = setTimeout(async () => {
+            log.info(`Running scheduled automation for time: ${timeStr}`);
+
+            if (!config.credentials || !config.credentials.username || !config.credentials.password) {
+                log.error('No saved credentials found for scheduled automation');
+                return;
+            }
+
+            try {
+                // Run the automation
+                await startAutomation(
+                    config.credentials.username,
+                    config.credentials.password,
+                    config.credentials.proxyServer
+                );
+                log.info('Scheduled automation completed successfully');
+
+                // Re-schedule for the next day
+                startScheduler();
+            } catch (error) {
+                log.error('Scheduled automation failed', { error: error.message, stack: error.stack });
+                // Try to reschedule even if there was an error
+                startScheduler();
+            }
+        }, msUntilTime);
+
+        schedulerTimers.push(timer);
+    });
+}
+
+// Clear all active schedulers
+function clearSchedulers() {
+    if (schedulerTimers.length > 0) {
+        log.info(`Clearing ${schedulerTimers.length} active schedulers`);
+        schedulerTimers.forEach(timer => clearTimeout(timer));
+        schedulerTimers = [];
+    }
+}
+
 app.whenReady().then(() => {
     log.info('Electron app is ready, initializing application');
     createWindow();
+
+    // Start the scheduler
+    startScheduler();
+    log.info('Automation scheduler started');
+});
+
+// Add IPC handler for automation-stopped event
+app.whenReady().then(() => {
+    // Listen for automation-stopped events
+    const { ipcMain } = require('electron');
+    ipcMain.on('automation-stopped', (event, data) => {
+        log.info('Automation stopped', data);
+
+        // Update the UI via IPC to show the stopped state
+        if (mainWindow) {
+            mainWindow.webContents.send('automation-status-update', {
+                status: 'stopped',
+                reason: data.reason,
+                message: data.message || 'Automation stopped',
+                timestamp: data.timestamp
+            });
+        }
+    });
 });
 
 ipcMain.handle('start-login', async (event, { username, password, proxyServer }) => {
@@ -138,6 +240,13 @@ ipcMain.handle('save-config', async (event, config) => {
     const newConfig = { ...existingConfig, ...config };
     const result = saveConfig(newConfig);
     log.info('Configuration save result', { success: result });
+
+    // Restart scheduler if configuration was updated
+    if (result && config.scheduler) {
+        startScheduler();
+        log.info('Scheduler restarted due to config update');
+    }
+
     return result;
 });
 
@@ -181,10 +290,54 @@ ipcMain.handle('maintenance-restart', async (event) => {
     }
 });
 
+// IPC handler for updating scheduler settings
+ipcMain.handle('update-scheduler', async (event, schedulerSettings) => {
+    log.info('Updating scheduler settings via IPC', schedulerSettings);
+
+    const config = loadConfig();
+    config.scheduler = schedulerSettings;
+    const result = saveConfig(config);
+
+    if (result) {
+        // Restart scheduler with new settings
+        startScheduler();
+        log.info('Scheduler restarted with new settings');
+    }
+
+    return {
+        success: result,
+        message: result ? 'Scheduler settings updated and applied' : 'Failed to update scheduler settings'
+    };
+});
+
+// IPC handler to get current scheduler status
+ipcMain.handle('get-scheduler-status', async (event) => {
+    const config = loadConfig();
+    const scheduler = config.scheduler || { enabled: false, times: [] };
+
+    // Calculate next run times for UI display
+    const nextRunTimes = scheduler.times.map(timeStr => {
+        const msUntilTime = getMillisecondsUntilTime(timeStr);
+        const nextRunDate = new Date(Date.now() + msUntilTime);
+        return {
+            time: timeStr,
+            nextRun: nextRunDate.toISOString(),
+            msRemaining: msUntilTime
+        };
+    }).sort((a, b) => a.msRemaining - b.msRemaining);
+
+    return {
+        enabled: scheduler.enabled,
+        times: scheduler.times,
+        nextRunTimes: nextRunTimes
+    };
+});
+
 // Handle app events
 app.on('window-all-closed', () => {
     log.info('All windows closed');
     if (process.platform !== 'darwin') {
+        clearSchedulers();
         log.info('Quitting application');
         app.quit();
     }
@@ -194,6 +347,9 @@ app.on('activate', () => {
     log.info('App activated');
     if (mainWindow === null) {
         createWindow();
+
+        // Ensure scheduler is running when app is reactivated
+        startScheduler();
     }
 });
 

@@ -71,8 +71,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("Run notification received:", message.message);
     handleRunNotification();
   } else if (message.type === "maintenanceDetected") {
-    console.log("Maintenance detected:", message.message);
+    console.log("Maintenance detected, notifying app");
     handleMaintenanceDetected(message);
+  } else if (message.type === "stopAutomation") {
+    console.log("Single run completed, stopping automation");
+    handleStopAutomation(message);
   } else if (message.type === "GET_STORAGE_DATA") {
     const keys = message.keys;
     chrome.storage.local.get(keys, (data) => {
@@ -80,6 +83,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ error: chrome.runtime.lastError });
         return;
       }
+      console.log("Retrieved storage data:", data);
+
       sendResponse(data);
     });
     return true;
@@ -183,6 +188,43 @@ async function reloadSession() {
     chrome.windows.remove(popupWindowId);
     popupWindowId = null;
   }
+}
+
+async function handleStopAutomation(message) {
+  console.log("Processing automation stop request from content script");
+
+  // Create WebSocket connection to notify automation app
+  try {
+    const ws = new WebSocket('ws://localhost:8080');
+
+    ws.onopen = () => {
+      console.log("Connected to automation app to stop automation");
+
+      // Send stop automation message
+      ws.send(JSON.stringify({
+        action: 'stopAutomation',
+        message: message.message || 'Automation stopped after single run',
+        timestamp: Date.now(),
+        reason: message.reason || 'singleRunCompleted'
+      }));
+
+      // Close connection after sending
+      setTimeout(() => {
+        ws.close();
+      }, 1000);
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket connection error:", error);
+    };
+  } catch (error) {
+    console.error("Error notifying automation app about stopping:", error);
+  }
+
+  // Also update the local storage to ensure the extension knows automation is stopped
+  chrome.storage.local.set({ isTrigger: false }, () => {
+    console.log("Updated isTrigger to false in storage");
+  });
 }
 
 console.log("Background script loaded");

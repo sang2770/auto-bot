@@ -12,6 +12,7 @@ let runTimeout = null;
 let isProcessing = false;
 let maintenanceObserver = null;
 let messageIds = [];
+let isRunOneTime = true;
 const bot = new BotManager();
 
 // Maintenance detection function
@@ -148,6 +149,8 @@ async function handleConfigUpdate(config) {
       chatFakeIds,
       chatReportIds
     );
+
+    isRunOneTime = config.runOnce || false;
   }
 }
 
@@ -269,8 +272,12 @@ chrome.runtime.onMessage.addListener(async (message) => {
     bot.updateChatIds(
       message.chatIds || [],
       message.chatFakeIds || [],
-      message.chatReportIds || []
+      message.chatReportIds || [],
     );
+  }
+
+  if (message.type === "runOnce") {
+    isRunOneTime = message.isRunOneTime;
   }
 });
 
@@ -1064,188 +1071,244 @@ async function joinRoom() {
 
   rooms[randomIndex].click();
 
-  await sleep(3 * 60); // Chờ 3 phút trước khi bắt đầu đặt cược
-  // await sleep(5);
-  fakeTasks.push({
-    type: "text",
-    content: `TAY SAU VÀO LỆNH`,
-  });
+  // await sleep(3 * 60); // Chờ 3 phút trước khi bắt đầu đặt cược
 
-  // 3. Tạo task cược ban đầu
-  const listTask = ["CON", "CÁI"];
-  const currentTask = listTask[Math.floor(Math.random() * listTask.length)];
-  const moneyValue = money || 500;
-  messageIds.push(...(await bot.runTasksForMainGroup(
-    () => { },
-    [
-      {
-        type: "text",
-        content: `TAY SAU VÀO LỆNH`,
-      },
-      {
-        type: "text",
-        content: `${currentTask} ${moneyValue}`,
-      },
-    ],
-    true
-  )));
-
-  // 4. Theo dõi kết quả bằng MutationObserver
-  const iframeGame = document.getElementById("iframeGame");
-  if (!iframeGame) return;
-  const doc = iframeGame.contentDocument || iframeGame.contentWindow.document;
-  const playerPoint = doc.querySelector("#gameWinnerPlayer");
-  const bankerPoint = doc.querySelector("#gameWinnerBanker");
-  if (!playerPoint || !bankerPoint) {
-    isProcessing = false;
-    return;
-  }
-
-  const bankerWinClass = "result_win_red";
-  const playerWinClass = "result_win_blue";
-  const tieClass = "result_tie_green";
-
-  // Check if gameInfoCard is hidden before setting up the observer
-  const gameInfoCard = doc.querySelector("#gameInfoCard");
-  console.log("gameInfoCard:", gameInfoCard);
-
-  const waitForGameInfoCardHidden = () => {
-    if (!gameInfoCard || gameInfoCard.style.display === "none") {
-      console.log("Game info card is hidden, setting up result observer...");
-      setupResultObserver();
-    } else {
-      console.log("Waiting for game info card to be hidden...");
-      setTimeout(waitForGameInfoCardHidden, 1000); // Check again in 1 second
-    }
-  };
-
-  const setupResultObserver = () => {
-    console.log("Observing game results...");
-    const observer = new MutationObserver(async () => {
-      isProcessing = false;
-      // Chỉ xử lý khi có các class kết quả
-      console.log(playerPoint.classList, bankerPoint.classList);
-      const menuTop = iframeGame.contentDocument.querySelector("#menu-top");
-      if (menuTop) {
-        menuTop.style.display = "none";
-      }
-      const playerHasResult =
-        playerPoint.classList.contains(playerWinClass) ||
-        playerPoint.classList.contains(tieClass);
-      const bankerHasResult =
-        bankerPoint.classList.contains(bankerWinClass) ||
-        bankerPoint.classList.contains(tieClass);
-      console.log(
-        "Player has result:",
-        playerHasResult,
-        "Banker has result:",
-        bankerHasResult
-      );
-      if (playerHasResult || bankerHasResult) {
-        const playerPointValue = playerPoint
-          .querySelector("#playerHandValue")
-          .textContent.trim();
-        const bankerPointValue = bankerPoint
-          .querySelector("#bankerHandValue")
-          .textContent.trim();
-        let bestType = "";
-        if (playerPointValue && bankerPointValue) {
-          if (playerPointValue > bankerPointValue) {
-            bestType = "PLAYER";
-          } else if (playerPointValue < bankerPointValue) {
-            bestType = "BANKER";
-          } else {
-            bestType = "TIE";
-          }
-          console.log(
-            "Best type determined:",
-            bestType,
-            "Player:",
-            playerPointValue,
-            "Banker:",
-            bankerPointValue
-          );
-
-          let status = "";
-          let moneyValueTmp = moneyValue || 500;
-          let task_status = null;
-
-          if (currentTask === "CON" && bestType === "PLAYER") {
-            task_status = { type: "text", content: `H +${moneyValueTmp}` };
-            status = "win";
-          } else if (currentTask === "CÁI" && bestType === "BANKER") {
-            task_status = { type: "text", content: `H +${moneyValueTmp}` };
-            status = "win";
-          } else if (bestType === "TIE") {
-            status = "win";
-            moneyValueTmp = 0;
-            task_status = { type: "text", content: "HOA +0" };
-          } else {
-            status = "lose";
-            task_status = { type: "text", content: `G -${moneyValueTmp}` };
-          }
-          createMessage(status, moneyValueTmp + "", 1000, 3000);
-          await sleep(1);
-          // capture game result
-          const gameResultScreenshot = await captureScreen();
-          tasks.push({
-            type: "screenshot",
-            data: gameResultScreenshot,
-          });
-          tasks.push(task_status);
-          tasks.push(
-            status === "lose"
-              ? { type: "photo", content: "", filePath: "media/cl.png" }
-              : { type: "text", content: "NGƯNG CA CHỐT LÃI!!!" }
-          );
-          createMessage("win", moneyValueTmp + "", 1000, 3000);
-          const gameResultFakeScreenshot = await captureScreen();
-          fakeTasks.push({
-            type: "text",
-            content: `${bestType === "PLAYER" ? "CON" : "CÁI"
-              } ${moneyValueTmp}`,
-          });
-          fakeTasks.push({
-            type: "screenshot",
-            data: gameResultFakeScreenshot,
-          });
-          fakeTasks.push({
-            type: "text",
-            content: bestType !== "TIE" ? `H +${moneyValueTmp}` : `HOA +0`,
-          });
+  const observerMessage = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (
+        mutation.type === "attributes" &&
+        mutation.attributeName === "class"
+      ) {
+        const el = mutation.target;
+        const classList = el.classList.value;
+        const prevClass = lastClassMap.get(el);
+        if (prevClass === classList) return;
+        lastClassMap.set(el, classList);
+        if (el.classList.contains("message_gray") && el.innerText.includes("Bắt đầu đặt cược")) {
+          logic();
         }
-
-        console.log("Tasks sau khi có kết quả:", tasks, fakeTasks);
-        observer.disconnect();
-        messageIds.push(...(await Promise.all([
-          bot.runTasksForMainGroup(() => { }, tasks),
-          bot.runTasksForFakeGroup(() => { }, fakeTasks),
-        ])).flat());
-
-        console.log("Message IDs:", messageIds);
-
-        isProcessing = false;
-        console.log("Rejoining room...");
-        runTimeout = setTimeout(async () => {
-          await setStorageData("isTrigger", true);
-          chrome.runtime.sendMessage({ type: "reloadSession" });
-          // // Thoát phòng
-          // const btnOut = doc.querySelector("#goHome2");
-          // console.log("Exiting room...", btnOut);
-
-          // if (btnOut) {
-          //   btnOut.click();
-          // }
-          // console.log("Room exited, waiting for next join...");
-          // joinRoom();
-          // send
-        }, notificationTime * 60 * 1000);
       }
     });
+  });
 
-    observer.observe(playerPoint, { attributes: true, childList: true });
-    observer.observe(bankerPoint, { attributes: true, childList: true });
-  };
+  const logic = async () => {
+    // await sleep(5);
+    fakeTasks.push({
+      type: "text",
+      content: `TAY SAU VÀO LỆNH`,
+    });
+
+    // 3. Tạo task cược ban đầu
+    const listTask = ["CON", "CÁI"];
+    const currentTask = listTask[Math.floor(Math.random() * listTask.length)];
+    const moneyValue = money || 500;
+    messageIds.push(...(await bot.runTasksForMainGroup(
+      () => { },
+      [
+        {
+          type: "text",
+          content: `TAY SAU VÀO LỆNH`,
+        },
+        {
+          type: "text",
+          content: `${currentTask} ${moneyValue}`,
+        },
+      ],
+      true
+    )));
+
+    // 4. Theo dõi kết quả bằng MutationObserver
+    const iframeGame = document.getElementById("iframeGame");
+    if (!iframeGame) return;
+    const doc = iframeGame.contentDocument || iframeGame.contentWindow.document;
+    const playerPoint = doc.querySelector("#gameWinnerPlayer");
+    const bankerPoint = doc.querySelector("#gameWinnerBanker");
+    if (!playerPoint || !bankerPoint) {
+      isProcessing = false;
+      return;
+    }
+
+    const bankerWinClass = "result_win_red";
+    const playerWinClass = "result_win_blue";
+    const tieClass = "result_tie_green";
+
+    // Check if gameInfoCard is hidden before setting up the observer
+    const gameInfoCard = doc.querySelector("#gameInfoCard");
+    console.log("gameInfoCard:", gameInfoCard);
+
+    const waitForGameInfoCardHidden = () => {
+      if (!gameInfoCard || gameInfoCard.style.display === "none") {
+        console.log("Game info card is hidden, setting up result observer...");
+        setupResultObserver();
+      } else {
+        console.log("Waiting for game info card to be hidden...");
+        setTimeout(waitForGameInfoCardHidden, 1000); // Check again in 1 second
+      }
+    };
+
+    const setupResultObserver = () => {
+      console.log("Observing game results...");
+      const observer = new MutationObserver(async () => {
+        isProcessing = false;
+        // Chỉ xử lý khi có các class kết quả
+        console.log(playerPoint.classList, bankerPoint.classList);
+        const menuTop = iframeGame.contentDocument.querySelector("#menu-top");
+        if (menuTop) {
+          menuTop.style.display = "none";
+        }
+        const playerHasResult =
+          playerPoint.classList.contains(playerWinClass) ||
+          playerPoint.classList.contains(tieClass);
+        const bankerHasResult =
+          bankerPoint.classList.contains(bankerWinClass) ||
+          bankerPoint.classList.contains(tieClass);
+        console.log(
+          "Player has result:",
+          playerHasResult,
+          "Banker has result:",
+          bankerHasResult
+        );
+        if (playerHasResult || bankerHasResult) {
+          const playerPointValue = playerPoint
+            .querySelector("#playerHandValue")
+            .textContent.trim();
+          const bankerPointValue = bankerPoint
+            .querySelector("#bankerHandValue")
+            .textContent.trim();
+          let bestType = "";
+          if (playerPointValue && bankerPointValue) {
+            if (playerPointValue > bankerPointValue) {
+              bestType = "PLAYER";
+            } else if (playerPointValue < bankerPointValue) {
+              bestType = "BANKER";
+            } else {
+              bestType = "TIE";
+            }
+            console.log(
+              "Best type determined:",
+              bestType,
+              "Player:",
+              playerPointValue,
+              "Banker:",
+              bankerPointValue
+            );
+
+            let status = "";
+            let moneyValueTmp = moneyValue || 500;
+            let task_status = null;
+
+            if (currentTask === "CON" && bestType === "PLAYER") {
+              task_status = { type: "text", content: `H +${moneyValueTmp}` };
+              status = "win";
+            } else if (currentTask === "CÁI" && bestType === "BANKER") {
+              task_status = { type: "text", content: `H +${moneyValueTmp}` };
+              status = "win";
+            } else if (bestType === "TIE") {
+              status = "win";
+              moneyValueTmp = 0;
+              task_status = { type: "text", content: "HOA +0" };
+            } else {
+              status = "lose";
+              task_status = { type: "text", content: `G -${moneyValueTmp}` };
+            }
+            createMessage(status, moneyValueTmp + "", 1000, 3000);
+            await sleep(1);
+            // capture game result
+            const gameResultScreenshot = await captureScreen();
+            tasks.push({
+              type: "screenshot",
+              data: gameResultScreenshot,
+            });
+            tasks.push(task_status);
+            tasks.push(
+              status === "lose"
+                ? { type: "photo", content: "", filePath: "media/cl.png" }
+                : { type: "text", content: "NGƯNG CA CHỐT LÃI!!!" }
+            );
+            createMessage("win", moneyValueTmp + "", 1000, 3000);
+            const gameResultFakeScreenshot = await captureScreen();
+            fakeTasks.push({
+              type: "text",
+              content: `${bestType === "PLAYER" ? "CON" : "CÁI"
+                } ${moneyValueTmp}`,
+            });
+            fakeTasks.push({
+              type: "screenshot",
+              data: gameResultFakeScreenshot,
+            });
+            fakeTasks.push({
+              type: "text",
+              content: bestType !== "TIE" ? `H +${moneyValueTmp}` : `HOA +0`,
+            });
+          }
+
+          console.log("Tasks sau khi có kết quả:", tasks, fakeTasks);
+          observer.disconnect();
+          messageIds.push(...(await Promise.all([
+            bot.runTasksForMainGroup(() => { }, tasks),
+            bot.runTasksForFakeGroup(() => { }, fakeTasks),
+          ])).flat());
+
+          console.log("Message IDs:", messageIds);
+
+          isProcessing = false;
+          if (isRunOneTime) {
+            console.log("Single run mode enabled, stopping automation...");
+
+            // Notify the electron app to stop automation
+            if (window.wsComm) {
+              window.wsComm.notifyAppOfAction('stopAutomation', {
+                reason: 'singleRunCompleted',
+                timestamp: Date.now()
+              });
+            } else {
+              // Send message to background script to notify main app
+              chrome.runtime.sendMessage({
+                type: 'stopAutomation',
+                message: 'Single run completed, stopping automation'
+              });
+            }
+
+            return;
+          }
+          console.log("Rejoining room...");
+          runTimeout = setTimeout(async () => {
+            await setStorageData("isTrigger", true);
+            chrome.runtime.sendMessage({ type: "reloadSession" });
+            // // Thoát phòng
+            // const btnOut = doc.querySelector("#goHome2");
+            // console.log("Exiting room...", btnOut);
+
+            // if (btnOut) {
+            //   btnOut.click();
+            // }
+            // console.log("Room exited, waiting for next join...");
+            // joinRoom();
+            // send
+          }, notificationTime * 60 * 1000);
+        }
+      });
+
+      observer.observe(playerPoint, { attributes: true, childList: true });
+      observer.observe(bankerPoint, { attributes: true, childList: true });
+    };
+  }
+
+  function listenResultPlayGame() {
+    const doc = document.getElementById("iframeGame");
+    if (!doc) return false;
+    const ifrDoc = doc.contentDocument;
+    const resultElement = ifrDoc.getElementById("gameMessage");
+    if (resultElement) {
+      observerMessage.observe(resultElement, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+      console.log("Listening to game results...");
+      return true;
+    }
+  }
+  listenResultPlayGame();
 
   // Start the waiting process
   waitForGameInfoCardHidden();

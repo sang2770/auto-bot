@@ -5,8 +5,17 @@
     "chatReportIds": "-4889347182"
   },
   "credentials": {
-    "username": "nam2770",
-    "password": "Fc9pcjD6mF2YZK@",
-    "proxyServer": ""
+    "username": "sang27701",
+    "password": "123456aA@",
+    "proxyServer": "as.proxys5.net:6200:rakuten24h-zone-custom-region-JP:091101"
+  },
+  "scheduler": {
+    "enabled": true,
+    "times": [
+      "10:00",
+      "12:00",
+      "13:00",
+      "21:47"
+    ]
   }
 }

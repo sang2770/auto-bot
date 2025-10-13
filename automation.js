@@ -67,7 +67,8 @@ function startSocketServer() {
         const config = loadConfig();
         ws.send(JSON.stringify({
             action: 'configUpdate',
-            config: config.bot || {}
+            config: config.bot || {},
+            runOnce: config.scheduler?.runOnce || false
         }));
 
         // runNotification
@@ -89,6 +90,10 @@ function handleExtensionMessage(data) {
         case 'maintenanceDetected':
             console.log('🚨 Maintenance detected by extension:', data.message);
             handleMaintenanceRestart(data);
+            break;
+        case 'stopAutomation':
+            console.log('⏹️ Stop automation requested:', data.message);
+            handleStopAutomation(data);
             break;
         case 'extensionConnected':
             console.log('Extension connected from:', data.url);
@@ -251,36 +256,21 @@ async function startAutomation(username, password, proxyServer) {
         headless: false,
         executablePath: puppeteer.executablePath(),
         args: [
-            `--disable-blink-features=AutomationControlled`,
-            `--disable-infobars`,
-            `--no-sandbox`,
-            `--disable-setuid-sandbox`,
-            `--disable-web-security`,
-            `--disable-features=VizDisplayCompositor`,
-            `--disable-background-networking`,
-            `--disable-background-timer-throttling`,
-            `--disable-backgrounding-occluded-windows`,
-            `--disable-renderer-backgrounding`,
-            `--disable-field-trial-config`,
-            `--disable-ipc-flooding-protection`,
-            `--no-first-run`,
-            `--no-default-browser-check`,
-            `--disable-default-apps`,
-            `--disable-sync`,
-            `--disable-translate`,
-            `--disable-plugins-discovery`,
-            `--disable-preconnect`,
-            `--disable-extensions-file-access-check`,
-            `--aggressive-cache-discard`,
-            `--memory-pressure-off`,
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--ignore-certificate-errors',
+            '--disable-web-security',
+            '--disable-features=IsolateOrigins,site-per-process',
+            '--disable-blink-features=AutomationControlled',
             `--load-extension=${extensionPath}`,
-            `--disable-extensions-except=${extensionPath}`
+            `--disable-extensions-except=${extensionPath}`,
         ],
         ignoreDefaultArgs: ['--disable-extensions'],
+        timeout: 60000,
         userDataDir: null // Use temporary profile that gets deleted on close
     };
 
-    // Add proxy settings if provided
+    // // Add proxy settings if provided
     if (proxyServer && proxyServer.trim()) {
         const proxyParts = proxyServer.trim().split(':');
 
@@ -323,7 +313,12 @@ async function startAutomation(username, password, proxyServer) {
     const page = await browser.newPage();
 
     try {
-        await page.goto('https://www.78winb.ink/', { waitUntil: 'domcontentloaded' });
+        await sleep(10);
+        try {
+            await page.goto('https://www.78winc3.net/', { waitUntil: 'domcontentloaded' });
+        } catch (navError) {
+            console.error('❌ Initial navigation failed, retrying...', navError);
+        }
         await sleep(20);
         // close modal if exists
         const modalSelector = '.ad-center .close';
@@ -348,19 +343,35 @@ async function startAutomation(username, password, proxyServer) {
         // wait button logout
         await page.waitForSelector('.header-btn.logout', { timeout: 100000 });
         // redirect to game page
-        await page.goto('https://www.78winb.ink/gamelobby/live', { waitUntil: 'domcontentloaded' });
+        await page.goto('https://www.78winc3.net/gamelobby/live', { waitUntil: 'domcontentloaded' });
         await sleep(20);
         // click data-subprovider="SEXYBCRT" with js
-        await page.evaluate(() => {
-            const button = document.querySelector('[data-subprovider="SEXYBCRT"] button');
+        await page.evaluate(async () => {
+            let button = document.querySelector('[data-subprovider="SEXYBCRT"] button');
             console.log('Button found:', button);
             if (button) {
                 button.click();
+            } else {
+                let buttonSexy = document.querySelector('li.sexybcrt');
+                if (buttonSexy) {
+                    buttonSexy.click();
+                }
+
+                // đợi 5s
+                await new Promise(resolve => setTimeout(resolve, 5000));
+
+                const play = document.querySelector('.sexybcrt.active .main-btn');
+                console.log('Play button found:', play);
+                if (play) {
+                    play.click();
+                } else {
+                    console.log('Play button not found after delay');
+                }
             }
         });
 
         // Wait a bit for the game to load
-        await sleep(3);
+        await sleep(6);
         return { success: true, message: 'Login automation completed and notification started' };
 
     } catch (error) {
@@ -378,6 +389,48 @@ async function startAutomation(username, password, proxyServer) {
 
         throw error; // Re-throw the error for the caller to handle
     }
+}
+
+async function handleStopAutomation(data) {
+    console.log('⏹️ Handling automation stop request:', data);
+
+    // Close existing browser instance if it exists
+    if (currentBrowser) {
+        console.log('🔄 Closing existing browser instance...');
+        try {
+            await closeBrowserSafely(currentBrowser);
+            console.log('✅ Browser instance closed successfully');
+        } catch (error) {
+            console.error('❌ Error closing browser:', error);
+        }
+        currentBrowser = null;
+    }
+
+    // Clean up proxy if needed
+    if (anonymizedProxyUrl) {
+        try {
+            await ProxyChain.closeAnonymizedProxy(anonymizedProxyUrl, true);
+            console.log('✅ Anonymized proxy closed');
+        } catch (error) {
+            console.error('❌ Error closing proxy:', error);
+        }
+        anonymizedProxyUrl = null;
+    }
+
+    // Notify the main app if we need to
+    const { app, BrowserWindow } = require('electron');
+    if (app && BrowserWindow) {
+        const windows = BrowserWindow.getAllWindows();
+        if (windows.length > 0) {
+            windows[0].webContents.send('automation-stopped', {
+                reason: data.reason || 'singleRunCompleted',
+                timestamp: Date.now(),
+                message: 'Automation stopped after single run completion'
+            });
+        }
+    }
+
+    console.log('✅ Automation stopped successfully');
 }
 
 module.exports = { startAutomation, startSocketServer, sendMessageToExtension };
