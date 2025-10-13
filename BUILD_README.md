@@ -100,3 +100,5 @@ Edit `package.json` in the `build` section to customize:
 ## 📞 Support
 
 For issues or questions, check the console logs in the Electron app's Developer Tools (Ctrl+Shift+I).
+
+ID videoContainer hidden
