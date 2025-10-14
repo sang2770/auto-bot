@@ -24,21 +24,19 @@ function startMaintenanceMonitoring() {
   }
 
   maintenanceCheckInterval = setInterval(() => {
-    const maintenanceLogout = document.querySelector(".maintenance.logout");
+    const maintenanceLogout = document.querySelector('.maintenance.logout');
     if (maintenanceLogout) {
-      console.log(
-        "🚨 Maintenance detected! Stopping current process and restarting..."
-      );
+      console.log('🚨 Maintenance detected! Stopping current process and restarting...');
       handleMaintenanceDetected();
     }
   }, 500); // check mỗi 0.5 giây
 
-  console.log("🔍 Maintenance monitoring started (interval mode)");
+  console.log('🔍 Maintenance monitoring started (interval mode)');
 }
 
 // Handle maintenance detection
 async function handleMaintenanceDetected() {
-  console.log("🛠️ Maintenance mode detected, initiating restart sequence...");
+  console.log('🛠️ Maintenance mode detected, initiating restart sequence...');
 
   // Stop current processing
   isProcessing = false;
@@ -57,7 +55,7 @@ async function handleMaintenanceDetected() {
 
   // recall message
   if (messageIds) {
-    messageIds.forEach((message) => {
+    messageIds.forEach(message => {
       if (bot) {
         bot.recallMessage(message.chatId, message.messageId);
       }
@@ -66,20 +64,22 @@ async function handleMaintenanceDetected() {
 
   // Notify the automation app about maintenance
   if (window.wsComm) {
-    window.wsComm.notifyAppOfAction("maintenanceDetected", {
+    window.wsComm.notifyAppOfAction('maintenanceDetected', {
       url: window.location.href,
       timestamp: Date.now(),
-      message: "Maintenance page detected, requesting restart",
+      message: 'Maintenance page detected, requesting restart'
     });
   } else {
     // Send message to background script to notify main app
     chrome.runtime.sendMessage({
-      type: "maintenanceDetected",
-      message: "Maintenance detected, requesting automation restart",
+      type: 'maintenanceDetected',
+      message: 'Maintenance detected, requesting automation restart'
     });
   }
 
-  console.log("🔄 Maintenance restart sequence initiated");
+
+
+  console.log('🔄 Maintenance restart sequence initiated');
 }
 function sleep(seconds) {
   return new Promise((resolve) => setTimeout(resolve, seconds * 1000));
@@ -132,13 +132,8 @@ async function handleConfigUpdate(config) {
   // Update bot configuration
   if (config.chatIds || config.chatFakeIds || config.chatReportIds) {
     const parseIds = (str) => {
-      if (typeof str === "string") {
-        return str
-          .split(",")
-          .map((id) => id.trim())
-          .filter((id) => id)
-          .map((id) => parseInt(id, 10))
-          .filter((id) => !isNaN(id));
+      if (typeof str === 'string') {
+        return str.split(',').map(id => id.trim()).filter(id => id).map(id => parseInt(id, 10)).filter(id => !isNaN(id));
       }
       return Array.isArray(str) ? str : [];
     };
@@ -149,7 +144,11 @@ async function handleConfigUpdate(config) {
 
     chrome.storage.local.set({ chatIds, chatFakeIds, chatReportIds, money });
 
-    bot.updateChatIds(chatIds, chatFakeIds, chatReportIds);
+    bot.updateChatIds(
+      chatIds,
+      chatFakeIds,
+      chatReportIds
+    );
 
     isRunOneTime = config.runOnce || false;
   }
@@ -194,6 +193,7 @@ setInterval(() => {
     new KeyboardEvent("keydown", { bubbles: true, key: "Shift" })
   );
 }, 60 * 1000);
+
 
 chrome.runtime.onMessage.addListener(async (message) => {
   console.log("Received message:", message);
@@ -272,7 +272,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
     bot.updateChatIds(
       message.chatIds || [],
       message.chatFakeIds || [],
-      message.chatReportIds || []
+      message.chatReportIds || [],
     );
   }
 
@@ -299,7 +299,7 @@ const callback = () => {
     updateBalance(formatCurrency(balance));
     updateImageMainCenter();
     updateVideoMainCenter();
-  } catch (error) {}
+  } catch (error) { }
 };
 
 const observer = new MutationObserver(callback);
@@ -565,7 +565,7 @@ function handleChip(betMoney = 0, bet) {
     const ifrDoc = doc.contentDocument;
     const betArea =
       ifrDoc.querySelectorAll(".bet-item")[
-        betType == "PLAYER" ? 4 : betType == "TIE" ? 5 : 6
+      betType == "PLAYER" ? 4 : betType == "TIE" ? 5 : 6
       ];
     chipCustom = ifrDoc.createElement("div");
     chipCustom.className = "icon_bet_chips2d_1 w_32 mode_confirm";
@@ -584,8 +584,8 @@ function handleChip(betMoney = 0, bet) {
       betType == "PLAYER"
         ? ifrDoc.querySelector("#betBoxPlayer")
         : betType == "TIE"
-        ? ifrDoc.querySelector("#betBoxTie")
-        : ifrDoc.querySelector("#betBoxBanker");
+          ? ifrDoc.querySelector("#betBoxTie")
+          : ifrDoc.querySelector("#betBoxBanker");
     chipCustom = ifrDoc.createElement("div");
     chipCustom.className = "icon_bet_chips2d mode_confirm";
     chipCustom.style.cssText =
@@ -621,15 +621,15 @@ function updateUsername(text) {
           ".menu-info__account__title"
         );
         usernameSpan.textContent = text;
-      } catch (error) {}
+      } catch (error) { }
 
       try {
         const usernameDiv = ifrDoc.querySelector(
           "#app > div > main > div.absolute.right-0.top-0.z-layout.transition-\\[left\\] > div.flex.gap-7\\.5.px-\\[45px\\].web-min\\:justify-end > div:nth-child(1) > div > button > div"
         );
         usernameDiv.textContent = text;
-      } catch (error) {}
-    } catch (e) {}
+      } catch (error) { }
+    } catch (e) { }
   }
 }
 
@@ -642,12 +642,12 @@ function updateUsernameMobile(text) {
     try {
       const usernameSpan = ifrDoc.querySelectorAll("span")[0];
       usernameSpan.textContent = text;
-    } catch (error) {}
+    } catch (error) { }
 
     try {
       const usernameSpan = ifrDoc.querySelector(".mc_header-info__user > p");
       usernameSpan.textContent = text;
-    } catch (error) {}
+    } catch (error) { }
   }
 }
 
@@ -671,15 +671,15 @@ function updateBalance(text) {
           ".menu-info__balance span:nth-of-type(2)"
         );
         balanceSpan.textContent = text;
-      } catch (error) {}
+      } catch (error) { }
 
       try {
         const balanceDiv = ifrDoc.querySelector(
           "#app > div > main > div.absolute.right-0.top-0.z-layout.transition-\\[left\\] > div.flex.gap-7\\.5.px-\\[45px\\].web-min\\:justify-end > div.flex.items-center.gap-1.py-2 > div"
         );
         balanceDiv.textContent = text;
-      } catch (error) {}
-    } catch (e) {}
+      } catch (error) { }
+    } catch (e) { }
   }
 }
 
@@ -692,12 +692,12 @@ function updateBalanceMobile(text) {
     try {
       const balanceDiv = ifrDoc.querySelectorAll("span")[1];
       balanceDiv.textContent = text;
-    } catch (error) {}
+    } catch (error) { }
 
     try {
       const balanceDiv = ifrDoc.querySelector(".mc_header-info__money > p");
       balanceDiv.textContent = text;
-    } catch (error) {}
+    } catch (error) { }
   }
 }
 
@@ -952,11 +952,7 @@ async function joinRoom() {
   while (!iframe && attempts < maxAttempts) {
     iframe = document.getElementById("iframeGameHall");
     if (!iframe) {
-      console.log(
-        `Attempt ${
-          attempts + 1
-        }/${maxAttempts}: iframeGameHall not found, waiting...`
-      );
+      console.log(`Attempt ${attempts + 1}/${maxAttempts}: iframeGameHall not found, waiting...`);
       await sleep(1);
       attempts++;
     }
@@ -1032,26 +1028,12 @@ async function joinRoom() {
     });
   }
   // Run both main and fake group tasks at the same time
-  messageIds.push(
-    ...(
-      await Promise.all([
-        bot.runTasksForMainGroup(
-          (res) => {
-            console.log(res);
-          },
-          tasks,
-          true
-        ),
-        bot.runTasksForFakeGroup(
-          (res) => {
-            console.log(res);
-          },
-          tasks,
-          true
-        ),
-      ])
-    ).flat()
-  );
+  messageIds.push(...(await Promise.all([
+    bot.runTasksForMainGroup((res) => {
+      console.log(res);
+    }, tasks, true),
+    bot.runTasksForFakeGroup((res) => { console.log(res); }, tasks, true),
+  ])).flat());
   tasks = [];
   const fakeTasks = [];
 
@@ -1077,15 +1059,13 @@ async function joinRoom() {
     data: roomCapture,
     content: `CÁC BẠN VÀO ${titleRoom} CHỜ LỆNH NHÉ`,
   });
-  messageIds.push(
-    ...(await bot.runTasksForReportGroup(
-      (status) => {
-        console.log("Report task completed with status:", status);
-      },
-      taskReport,
-      true
-    ))
-  );
+  messageIds.push(...(await bot.runTasksForReportGroup(
+    (status) => {
+      console.log("Report task completed with status:", status);
+    },
+    taskReport,
+    true
+  ) ?? []));
 
   console.log("Message IDs:", messageIds);
 
@@ -1093,6 +1073,8 @@ async function joinRoom() {
 
   // await sleep(3 * 60); // Chờ 3 phút trước khi bắt đầu đặt cược
 
+  lastClassMap = new WeakMap();
+  
   const observerMessage = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       if (
@@ -1104,10 +1086,9 @@ async function joinRoom() {
         const prevClass = lastClassMap.get(el);
         if (prevClass === classList) return;
         lastClassMap.set(el, classList);
-        if (
-          el.classList.contains("message_gray") &&
-          el.innerText.includes("Bắt đầu đặt cược")
-        ) {
+        if (el.classList.contains("message_gray") && el.innerText.includes("Bắt đầu đặt cược")) {
+          console.log("Bắt đầu đặt cược");
+          
           logic();
         }
       }
@@ -1125,22 +1106,20 @@ async function joinRoom() {
     const listTask = ["CON", "CÁI"];
     const currentTask = listTask[Math.floor(Math.random() * listTask.length)];
     const moneyValue = money || 500;
-    messageIds.push(
-      ...(await bot.runTasksForMainGroup(
-        () => {},
-        [
-          {
-            type: "text",
-            content: `TAY SAU VÀO LỆNH`,
-          },
-          {
-            type: "text",
-            content: `${currentTask} ${moneyValue}`,
-          },
-        ],
-        true
-      ))
-    );
+    messageIds.push(...((await bot.runTasksForMainGroup(
+      () => { },
+      [
+        {
+          type: "text",
+          content: `TAY SAU VÀO LỆNH`,
+        },
+        {
+          type: "text",
+          content: `${currentTask} ${moneyValue}`,
+        },
+      ],
+      true
+    )) || []));
 
     // 4. Theo dõi kết quả bằng MutationObserver
     const iframeGame = document.getElementById("iframeGame");
@@ -1170,8 +1149,6 @@ async function joinRoom() {
         setTimeout(waitForGameInfoCardHidden, 1000); // Check again in 1 second
       }
     };
-
-    lastClassMap = new WeakMap();
 
     const setupResultObserver = () => {
       console.log("Observing game results...");
@@ -1256,9 +1233,8 @@ async function joinRoom() {
             const gameResultFakeScreenshot = await captureScreen();
             fakeTasks.push({
               type: "text",
-              content: `${
-                bestType === "PLAYER" ? "CON" : "CÁI"
-              } ${moneyValueTmp}`,
+              content: `${bestType === "PLAYER" ? "CON" : "CÁI"
+                } ${moneyValueTmp}`,
             });
             fakeTasks.push({
               type: "screenshot",
@@ -1272,14 +1248,10 @@ async function joinRoom() {
 
           console.log("Tasks sau khi có kết quả:", tasks, fakeTasks);
           observer.disconnect();
-          messageIds.push(
-            ...(
-              await Promise.all([
-                bot.runTasksForMainGroup(() => {}, tasks),
-                bot.runTasksForFakeGroup(() => {}, fakeTasks),
-              ])
-            ).flat()
-          );
+          messageIds.push(...(await Promise.all([
+            bot.runTasksForMainGroup(() => { }, tasks),
+            bot.runTasksForFakeGroup(() => { }, fakeTasks),
+          ])).flat());
 
           console.log("Message IDs:", messageIds);
 
@@ -1289,15 +1261,15 @@ async function joinRoom() {
 
             // Notify the electron app to stop automation
             if (window.wsComm) {
-              window.wsComm.notifyAppOfAction("stopAutomation", {
-                reason: "singleRunCompleted",
-                timestamp: Date.now(),
+              window.wsComm.notifyAppOfAction('stopAutomation', {
+                reason: 'singleRunCompleted',
+                timestamp: Date.now()
               });
             } else {
               // Send message to background script to notify main app
               chrome.runtime.sendMessage({
-                type: "stopAutomation",
-                message: "Single run completed, stopping automation",
+                type: 'stopAutomation',
+                message: 'Single run completed, stopping automation'
               });
             }
 
@@ -1325,8 +1297,9 @@ async function joinRoom() {
       observer.observe(bankerPoint, { attributes: true, childList: true });
     };
 
+      // Start the waiting process
     waitForGameInfoCardHidden();
-  };
+  }
 
   function listenResultPlayGame() {
     const doc = document.getElementById("iframeGame");
@@ -1342,7 +1315,10 @@ async function joinRoom() {
       return true;
     }
   }
-  while(!listenResultPlayGame()) {
-    await sleep(1);
+  (async () => {
+  while (!listenResultPlayGame()) {
+    // wait until the element is found
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
+})();
 }
