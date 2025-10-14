@@ -24,19 +24,21 @@ function startMaintenanceMonitoring() {
   }
 
   maintenanceCheckInterval = setInterval(() => {
-    const maintenanceLogout = document.querySelector('.maintenance.logout');
+    const maintenanceLogout = document.querySelector(".maintenance.logout");
     if (maintenanceLogout) {
-      console.log('🚨 Maintenance detected! Stopping current process and restarting...');
+      console.log(
+        "🚨 Maintenance detected! Stopping current process and restarting..."
+      );
       handleMaintenanceDetected();
     }
   }, 500); // check mỗi 0.5 giây
 
-  console.log('🔍 Maintenance monitoring started (interval mode)');
+  console.log("🔍 Maintenance monitoring started (interval mode)");
 }
 
 // Handle maintenance detection
 async function handleMaintenanceDetected() {
-  console.log('🛠️ Maintenance mode detected, initiating restart sequence...');
+  console.log("🛠️ Maintenance mode detected, initiating restart sequence...");
 
   // Stop current processing
   isProcessing = false;
@@ -55,7 +57,7 @@ async function handleMaintenanceDetected() {
 
   // recall message
   if (messageIds) {
-    messageIds.forEach(message => {
+    messageIds.forEach((message) => {
       if (bot) {
         bot.recallMessage(message.chatId, message.messageId);
       }
@@ -64,22 +66,20 @@ async function handleMaintenanceDetected() {
 
   // Notify the automation app about maintenance
   if (window.wsComm) {
-    window.wsComm.notifyAppOfAction('maintenanceDetected', {
+    window.wsComm.notifyAppOfAction("maintenanceDetected", {
       url: window.location.href,
       timestamp: Date.now(),
-      message: 'Maintenance page detected, requesting restart'
+      message: "Maintenance page detected, requesting restart",
     });
   } else {
     // Send message to background script to notify main app
     chrome.runtime.sendMessage({
-      type: 'maintenanceDetected',
-      message: 'Maintenance detected, requesting automation restart'
+      type: "maintenanceDetected",
+      message: "Maintenance detected, requesting automation restart",
     });
   }
 
-
-
-  console.log('🔄 Maintenance restart sequence initiated');
+  console.log("🔄 Maintenance restart sequence initiated");
 }
 function sleep(seconds) {
   return new Promise((resolve) => setTimeout(resolve, seconds * 1000));
@@ -132,24 +132,24 @@ async function handleConfigUpdate(config) {
   // Update bot configuration
   if (config.chatIds || config.chatFakeIds || config.chatReportIds) {
     const parseIds = (str) => {
-      if (typeof str === 'string') {
-        return str.split(',').map(id => id.trim()).filter(id => id).map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+      if (typeof str === "string") {
+        return str
+          .split(",")
+          .map((id) => id.trim())
+          .filter((id) => id)
+          .map((id) => parseInt(id, 10))
+          .filter((id) => !isNaN(id));
       }
       return Array.isArray(str) ? str : [];
     };
     const chatIds = parseIds(config.chatIds);
     const chatFakeIds = parseIds(config.chatFakeIds);
     const chatReportIds = parseIds(config.chatReportIds);
-    const money = parseInt(config.money) || 500;
+    const money = parseInt(config.money) || 1000;
 
     chrome.storage.local.set({ chatIds, chatFakeIds, chatReportIds, money });
 
-    bot.updateChatIds(
-      chatIds,
-      chatFakeIds,
-      chatReportIds
-    );
-
+    bot.updateChatIds(chatIds, chatFakeIds, chatReportIds);
     isRunOneTime = config.runOnce || false;
   }
 }
@@ -193,7 +193,6 @@ setInterval(() => {
     new KeyboardEvent("keydown", { bubbles: true, key: "Shift" })
   );
 }, 60 * 1000);
-
 
 chrome.runtime.onMessage.addListener(async (message) => {
   console.log("Received message:", message);
@@ -242,7 +241,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
   }
 
   if (message.type === "money") {
-    money = isNaN(message.text) ? 500 : Number(message.text);
+    money = isNaN(message.text) ? 1000 : Number(message.text);
   }
 
   if (message.type === "notificationTime") {
@@ -272,7 +271,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
     bot.updateChatIds(
       message.chatIds || [],
       message.chatFakeIds || [],
-      message.chatReportIds || [],
+      message.chatReportIds || []
     );
   }
 
@@ -299,7 +298,7 @@ const callback = () => {
     updateBalance(formatCurrency(balance));
     updateImageMainCenter();
     updateVideoMainCenter();
-  } catch (error) { }
+  } catch (error) {}
 };
 
 const observer = new MutationObserver(callback);
@@ -565,7 +564,7 @@ function handleChip(betMoney = 0, bet) {
     const ifrDoc = doc.contentDocument;
     const betArea =
       ifrDoc.querySelectorAll(".bet-item")[
-      betType == "PLAYER" ? 4 : betType == "TIE" ? 5 : 6
+        betType == "PLAYER" ? 4 : betType == "TIE" ? 5 : 6
       ];
     chipCustom = ifrDoc.createElement("div");
     chipCustom.className = "icon_bet_chips2d_1 w_32 mode_confirm";
@@ -584,8 +583,8 @@ function handleChip(betMoney = 0, bet) {
       betType == "PLAYER"
         ? ifrDoc.querySelector("#betBoxPlayer")
         : betType == "TIE"
-          ? ifrDoc.querySelector("#betBoxTie")
-          : ifrDoc.querySelector("#betBoxBanker");
+        ? ifrDoc.querySelector("#betBoxTie")
+        : ifrDoc.querySelector("#betBoxBanker");
     chipCustom = ifrDoc.createElement("div");
     chipCustom.className = "icon_bet_chips2d mode_confirm";
     chipCustom.style.cssText =
@@ -621,15 +620,15 @@ function updateUsername(text) {
           ".menu-info__account__title"
         );
         usernameSpan.textContent = text;
-      } catch (error) { }
+      } catch (error) {}
 
       try {
         const usernameDiv = ifrDoc.querySelector(
           "#app > div > main > div.absolute.right-0.top-0.z-layout.transition-\\[left\\] > div.flex.gap-7\\.5.px-\\[45px\\].web-min\\:justify-end > div:nth-child(1) > div > button > div"
         );
         usernameDiv.textContent = text;
-      } catch (error) { }
-    } catch (e) { }
+      } catch (error) {}
+    } catch (e) {}
   }
 }
 
@@ -642,12 +641,12 @@ function updateUsernameMobile(text) {
     try {
       const usernameSpan = ifrDoc.querySelectorAll("span")[0];
       usernameSpan.textContent = text;
-    } catch (error) { }
+    } catch (error) {}
 
     try {
       const usernameSpan = ifrDoc.querySelector(".mc_header-info__user > p");
       usernameSpan.textContent = text;
-    } catch (error) { }
+    } catch (error) {}
   }
 }
 
@@ -671,15 +670,15 @@ function updateBalance(text) {
           ".menu-info__balance span:nth-of-type(2)"
         );
         balanceSpan.textContent = text;
-      } catch (error) { }
+      } catch (error) {}
 
       try {
         const balanceDiv = ifrDoc.querySelector(
           "#app > div > main > div.absolute.right-0.top-0.z-layout.transition-\\[left\\] > div.flex.gap-7\\.5.px-\\[45px\\].web-min\\:justify-end > div.flex.items-center.gap-1.py-2 > div"
         );
         balanceDiv.textContent = text;
-      } catch (error) { }
-    } catch (e) { }
+      } catch (error) {}
+    } catch (e) {}
   }
 }
 
@@ -692,12 +691,12 @@ function updateBalanceMobile(text) {
     try {
       const balanceDiv = ifrDoc.querySelectorAll("span")[1];
       balanceDiv.textContent = text;
-    } catch (error) { }
+    } catch (error) {}
 
     try {
       const balanceDiv = ifrDoc.querySelector(".mc_header-info__money > p");
       balanceDiv.textContent = text;
-    } catch (error) { }
+    } catch (error) {}
   }
 }
 
@@ -952,7 +951,11 @@ async function joinRoom() {
   while (!iframe && attempts < maxAttempts) {
     iframe = document.getElementById("iframeGameHall");
     if (!iframe) {
-      console.log(`Attempt ${attempts + 1}/${maxAttempts}: iframeGameHall not found, waiting...`);
+      console.log(
+        `Attempt ${
+          attempts + 1
+        }/${maxAttempts}: iframeGameHall not found, waiting...`
+      );
       await sleep(1);
       attempts++;
     }
@@ -981,7 +984,7 @@ async function joinRoom() {
       storage.chatFakeIds || null,
       storage.chatReportIds || null
     );
-    money = storage.money || 500;
+    money = storage.money || 1000;
 
     console.log("Retrieved chat IDs from storage:");
     console.log("- Main:", storage.chatIds || []);
@@ -1014,28 +1017,47 @@ async function joinRoom() {
     tasks.push({
       type: "screenshot",
       data: roomAreaScreenshot,
-      content: "ANH EM VÀO SẢNH SEXY NHÉ",
+      //content: "💌 CẢ NHÀ VÀO SẢNH SEXY NHẬN BÀN \n 💌NHẬN BÀN 𝐋𝐈Ê𝐍 𝐇Ệ: [Trân Trân](https://t.me/Trantranmb99)",
     });
+    // tasks.push({
+    //   type: "photo",
+    //   content: "",
+    //   filePath: "media/baoban.png",
+    // });
     tasks.push({
       type: "text",
       content:
-        "🌟 LINH ĐĂNG KÍ THAM GIA: [LINK ĐĂNG KÝ](https://bl555a3a14q.vipbl555.com/m/register?affiliateCode=bl555a3a14q)\n🔥 NHẬN KHUYẾN MÃI CỰC HOT\nLIÊN HỆ CHO ADMIN : [NHẮN TIN CHO BOSS](https://t.me/PHUONGLANBCR7999) HOẶC [TRỢ LÝ VÂN ANH](https://t.me/TLVANANH68)\n☘️ VỐN ĐIỀU LỆ TẠI GROUD : 3M-50M , LÃI MỖI NGÀY DAO ĐỘNG 30% - 50% 💋",
+        "💥 ĐÃ BÁO BÀN TRONG ɴʜᴏ́ᴍ ʙᴀ́ᴏ ʙᴀ̀ɴ\n💥 TẠI ĐÂY 👉: [NHÓM BÁO BÀN](https://t.me/+n9W7kpvoaZczYzYx)\n💥 ʟɪᴇɴ ʜᴇ̣̂ ᴀᴅᴍ ᴆᴇ̂̉ ᴆᴜ̛ᴏ̛̣ᴄ ɴʜᴀ̣̂ɴ ꜱᴏ̂́ ʙᴀ̀ɴ\n💥 TẠI ĐÂY 👉: ADMIN : [@QuanADM88](https://t.me/Quanadm88)",
     });
     tasks.push({
       type: "video",
-      content: "",
-      filePath: "media/0530.gif.mp4",
+      content: " 💥 CHUẨN BỊ VÀO LỆNH 💥 ",
+      filePath: "media/Chờ lệnh 1.mp4",
     });
   }
   // Run both main and fake group tasks at the same time
-  messageIds.push(...(await Promise.all([
-    bot.runTasksForMainGroup((res) => {
-      console.log(res);
-    }, tasks, true),
-    bot.runTasksForFakeGroup((res) => { console.log(res); }, tasks, true),
-  ])).flat());
+  messageIds.push(
+    ...(
+      await Promise.all([
+        bot.runTasksForMainGroup(
+          (res) => {
+            console.log(res);
+          },
+          tasks,
+          true
+        ),
+        bot.runTasksForFakeGroup(
+          (res) => {
+            console.log(res);
+          },
+          tasks,
+          true
+        ),
+      ])
+    ).flat()
+  );
   tasks = [];
-  const fakeTasks = [];
+  let fakeTasks = [];
 
   // 2. Chọn phòng ngẫu nhiên
   const rooms = iframe.contentDocument.querySelectorAll(
@@ -1059,22 +1081,264 @@ async function joinRoom() {
     data: roomCapture,
     content: `CÁC BẠN VÀO ${titleRoom} CHỜ LỆNH NHÉ`,
   });
-  messageIds.push(...(await bot.runTasksForReportGroup(
-    (status) => {
-      console.log("Report task completed with status:", status);
-    },
-    taskReport,
-    true
-  ) ?? []));
+  messageIds.push(
+    ...(await bot.runTasksForReportGroup(
+      (status) => {
+        console.log("Report task completed with status:", status);
+      },
+      taskReport,
+      true
+    ))
+  );
 
   console.log("Message IDs:", messageIds);
 
   rooms[randomIndex].click();
 
-  // await sleep(3 * 60); // Chờ 3 phút trước khi bắt đầu đặt cược
+  await sleep(60); // Chờ 3 phút trước khi bắt đầu đặt cược
+  // await sleep(5);
 
   lastClassMap = new WeakMap();
-  
+  const logic = async () => {
+    fakeTasks.push({
+    type: "text",
+    content: `💥 TAY SAU VÀO LỆNH 💥`,
+  });
+
+  // 3. Tạo task cược ban đầu
+  const listTask = ["CON", "CÁI"];
+  const currentTask = listTask[Math.floor(Math.random() * listTask.length)];
+  const moneyValue = money || 1000;
+  messageIds.push(
+    ...(await bot.runTasksForMainGroup(
+      () => {},
+      [
+        {
+          type: "text",
+          content: `💥 TAY SAU VÀO LỆNH 💥`,
+        },
+        {
+          type: "text",
+          content: `${currentTask} ${moneyValue}`,
+        },
+      ],
+      true
+    ))
+  );
+
+  // 4. Theo dõi kết quả bằng MutationObserver
+  const iframeGame = document.getElementById("iframeGame");
+  if (!iframeGame) return;
+  const doc = iframeGame.contentDocument || iframeGame.contentWindow.document;
+  const playerPoint = doc.querySelector("#gameWinnerPlayer");
+  const bankerPoint = doc.querySelector("#gameWinnerBanker");
+  if (!playerPoint || !bankerPoint) {
+    isProcessing = false;
+    return;
+  }
+
+  const bankerWinClass = "result_win_red";
+  const playerWinClass = "result_win_blue";
+  const tieClass = "result_tie_green";
+
+  // Check if gameInfoCard is hidden before setting up the observer
+  const gameInfoCard = doc.querySelector("#gameInfoCard");
+  console.log("gameInfoCard:", gameInfoCard);
+
+  const waitForGameInfoCardHidden = () => {
+    if (!gameInfoCard || gameInfoCard.style.display === "none") {
+      console.log("Game info card is hidden, setting up result observer...");
+      setupResultObserver();
+    } else {
+      console.log("Waiting for game info card to be hidden...");
+      setTimeout(waitForGameInfoCardHidden, 1000); // Check again in 1 second
+    }
+  };
+
+  const setupResultObserver = () => {
+    console.log("Observing game results...");
+    const observer = new MutationObserver(async () => {
+      isProcessing = false;
+      // Chỉ xử lý khi có các class kết quả
+      console.log(playerPoint.classList, bankerPoint.classList);
+      const menuTop = iframeGame.contentDocument.querySelector("#menu-top");
+      if (menuTop) {
+        menuTop.style.display = "none";
+      }
+      const playerHasResult =
+        playerPoint.classList.contains(playerWinClass) ||
+        playerPoint.classList.contains(tieClass);
+      const bankerHasResult =
+        bankerPoint.classList.contains(bankerWinClass) ||
+        bankerPoint.classList.contains(tieClass);
+      console.log(
+        "Player has result:",
+        playerHasResult,
+        "Banker has result:",
+        bankerHasResult
+      );
+      if (playerHasResult || bankerHasResult) {
+        const playerPointValue = playerPoint
+          .querySelector("#playerHandValue")
+          .textContent.trim();
+        const bankerPointValue = bankerPoint
+          .querySelector("#bankerHandValue")
+          .textContent.trim();
+        let bestType = "";
+        if (playerPointValue && bankerPointValue) {
+          observer.disconnect();
+          if (playerPointValue > bankerPointValue) {
+            bestType = "PLAYER";
+          } else if (playerPointValue < bankerPointValue) {
+            bestType = "BANKER";
+          } else {
+            bestType = "TIE";
+          }
+          console.log(
+            "Best type determined:",
+            bestType,
+            "Player:",
+            playerPointValue,
+            "Banker:",
+            bankerPointValue
+          );
+
+          let status = "";
+          let moneyValueTmp = moneyValue || 1000;
+          let task_status = null;
+
+          if (currentTask === "CON" && bestType === "PLAYER") {
+            task_status = { type: "text", content: `H +${moneyValueTmp}` };
+            status = "win";
+          } else if (currentTask === "CÁI" && bestType === "BANKER") {
+            moneyValueTmp = Math.floor(
+              moneyValueTmp - (moneyValueTmp * 5) / 100
+            );
+            task_status = { type: "text", content: `H +${moneyValueTmp}` };
+            status = "win";
+          } else if (bestType === "TIE") {
+            status = "win";
+            moneyValueTmp = 0;
+            task_status = { type: "text", content: "HOA +0" };
+          } else {
+            status = "lose";
+            task_status = { type: "text", content: `G -${moneyValueTmp}` };
+          }
+          createMessage(
+            status,
+            moneyValueTmp.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }),
+            1000,
+            3000
+          );
+          await sleep(1);
+          // capture game result
+          const gameResultScreenshot = await captureScreen();
+          tasks.push({
+            type: "screenshot",
+            data: gameResultScreenshot,
+          });
+          tasks.push(task_status);
+          tasks.push(
+            status === "lose"
+              ? { type: "video", content: "", filePath: "media/3.MP4" } // CHỐT LỖ
+              : {
+                  type: "photo",
+                  content: "💥 NGỪNG CA GIAO DỊCH  CHỐT LÃI 💥",
+                  filePath: "media/gdtc.png",
+                }
+          );
+          await sleep(3);
+          createMessage(
+            "win",
+            moneyValueTmp.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }),
+            1000,
+            3000
+          );
+          const gameResultFakeScreenshot = await captureScreen();
+          fakeTasks.push({
+            type: "text",
+            content: `${bestType === "PLAYER" ? "CON" : "CÁI"} ${moneyValue}`,
+          });
+          messageIds.push(
+            ...(
+              await Promise.all([
+                bot.runTasksForMainGroup(() => {}, tasks),
+                bot.runTasksForFakeGroup(() => {}, fakeTasks, true),
+              ])
+            ).flat()
+          );
+          console.log("Tasks sau khi có kết quả:", tasks, fakeTasks);
+          fakeTasks = [];
+          await sleep(15);
+          fakeTasks.push({
+            type: "screenshot",
+            data: gameResultFakeScreenshot,
+          });
+          fakeTasks.push({
+            type: "text",
+            content: bestType !== "TIE" ? `H +${moneyValueTmp}` : `HOA +0`,
+          });
+          fakeTasks.push({
+            type: "photo",
+            content: "💥 NGỪNG CA GIAO DỊCH  CHỐT LÃI 💥",
+            filePath: "media/gdtc.png",
+          });
+          messageIds.push(
+            ...(
+              await Promise.all([bot.runTasksForFakeGroup(() => {}, fakeTasks)])
+            ).flat()
+          );
+        }
+        console.log("Message IDs:", messageIds);
+
+        isProcessing = false;
+
+        console.log("Single run mode enabled, stopping automation...");
+        // Notify the electron app to stop automation
+        if (window.wsComm) {
+          window.wsComm.notifyAppOfAction("stopAutomation", {
+            reason: "singleRunCompleted",
+            timestamp: Date.now(),
+          });
+        } else {
+          // Send message to background script to notify main app
+          chrome.runtime.sendMessage({
+            type: "stopAutomation",
+            message: "Single run completed, stopping automation",
+          });
+        }
+        return;
+        // console.log("Rejoining room...");
+        // runTimeout = setTimeout(async () => {
+        //   await setStorageData("isTrigger", true);
+        //   chrome.runtime.sendMessage({ type: "reloadSession" });
+        //   // // Thoát phòng
+        //   // const btnOut = doc.querySelector("#goHome2");
+        //   // console.log("Exiting room...", btnOut);
+
+        //   // if (btnOut) {
+        //   //   btnOut.click();
+        //   // }
+        //   // console.log("Room exited, waiting for next join...");
+        //   // joinRoom();
+        //   // send
+        // }, notificationTime * 60 * 1000);
+      }
+    });
+
+    observer.observe(playerPoint, { attributes: true, childList: true });
+    observer.observe(bankerPoint, { attributes: true, childList: true });
+  };
+
+  // Start the waiting process
+  waitForGameInfoCardHidden();
+  }
   const observerMessage = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       if (
@@ -1086,220 +1350,17 @@ async function joinRoom() {
         const prevClass = lastClassMap.get(el);
         if (prevClass === classList) return;
         lastClassMap.set(el, classList);
-        if (el.classList.contains("message_gray") && el.innerText.includes("Bắt đầu đặt cược")) {
+        if (
+          el.classList.contains("message_gray") &&
+          el.innerText.includes("Bắt đầu đặt cược")
+        ) {
           console.log("Bắt đầu đặt cược");
-          
           logic();
+          observerMessage.disconnect();
         }
       }
     });
   });
-
-  const logic = async () => {
-    // await sleep(5);
-    fakeTasks.push({
-      type: "text",
-      content: `TAY SAU VÀO LỆNH`,
-    });
-
-    // 3. Tạo task cược ban đầu
-    const listTask = ["CON", "CÁI"];
-    const currentTask = listTask[Math.floor(Math.random() * listTask.length)];
-    const moneyValue = money || 500;
-    messageIds.push(...((await bot.runTasksForMainGroup(
-      () => { },
-      [
-        {
-          type: "text",
-          content: `TAY SAU VÀO LỆNH`,
-        },
-        {
-          type: "text",
-          content: `${currentTask} ${moneyValue}`,
-        },
-      ],
-      true
-    )) || []));
-
-    // 4. Theo dõi kết quả bằng MutationObserver
-    const iframeGame = document.getElementById("iframeGame");
-    if (!iframeGame) return;
-    const doc = iframeGame.contentDocument || iframeGame.contentWindow.document;
-    const playerPoint = doc.querySelector("#gameWinnerPlayer");
-    const bankerPoint = doc.querySelector("#gameWinnerBanker");
-    if (!playerPoint || !bankerPoint) {
-      isProcessing = false;
-      return;
-    }
-
-    const bankerWinClass = "result_win_red";
-    const playerWinClass = "result_win_blue";
-    const tieClass = "result_tie_green";
-
-    // Check if gameInfoCard is hidden before setting up the observer
-    const gameInfoCard = doc.querySelector("#gameInfoCard");
-    console.log("gameInfoCard:", gameInfoCard);
-
-    const waitForGameInfoCardHidden = () => {
-      if (!gameInfoCard || gameInfoCard.style.display === "none") {
-        console.log("Game info card is hidden, setting up result observer...");
-        setupResultObserver();
-      } else {
-        console.log("Waiting for game info card to be hidden...");
-        setTimeout(waitForGameInfoCardHidden, 1000); // Check again in 1 second
-      }
-    };
-
-    const setupResultObserver = () => {
-      console.log("Observing game results...");
-      const observer = new MutationObserver(async () => {
-        isProcessing = false;
-        // Chỉ xử lý khi có các class kết quả
-        console.log(playerPoint.classList, bankerPoint.classList);
-        const menuTop = iframeGame.contentDocument.querySelector("#menu-top");
-        if (menuTop) {
-          menuTop.style.display = "none";
-        }
-        const playerHasResult =
-          playerPoint.classList.contains(playerWinClass) ||
-          playerPoint.classList.contains(tieClass);
-        const bankerHasResult =
-          bankerPoint.classList.contains(bankerWinClass) ||
-          bankerPoint.classList.contains(tieClass);
-        console.log(
-          "Player has result:",
-          playerHasResult,
-          "Banker has result:",
-          bankerHasResult
-        );
-        if (playerHasResult || bankerHasResult) {
-          const playerPointValue = playerPoint
-            .querySelector("#playerHandValue")
-            .textContent.trim();
-          const bankerPointValue = bankerPoint
-            .querySelector("#bankerHandValue")
-            .textContent.trim();
-          let bestType = "";
-          if (playerPointValue && bankerPointValue) {
-            if (playerPointValue > bankerPointValue) {
-              bestType = "PLAYER";
-            } else if (playerPointValue < bankerPointValue) {
-              bestType = "BANKER";
-            } else {
-              bestType = "TIE";
-            }
-            console.log(
-              "Best type determined:",
-              bestType,
-              "Player:",
-              playerPointValue,
-              "Banker:",
-              bankerPointValue
-            );
-
-            let status = "";
-            let moneyValueTmp = moneyValue || 500;
-            let task_status = null;
-
-            if (currentTask === "CON" && bestType === "PLAYER") {
-              task_status = { type: "text", content: `H +${moneyValueTmp}` };
-              status = "win";
-            } else if (currentTask === "CÁI" && bestType === "BANKER") {
-              task_status = { type: "text", content: `H +${moneyValueTmp}` };
-              status = "win";
-            } else if (bestType === "TIE") {
-              status = "win";
-              moneyValueTmp = 0;
-              task_status = { type: "text", content: "HOA +0" };
-            } else {
-              status = "lose";
-              task_status = { type: "text", content: `G -${moneyValueTmp}` };
-            }
-            createMessage(status, moneyValueTmp + "", 1000, 3000);
-            await sleep(1);
-            // capture game result
-            const gameResultScreenshot = await captureScreen();
-            tasks.push({
-              type: "screenshot",
-              data: gameResultScreenshot,
-            });
-            tasks.push(task_status);
-            tasks.push(
-              status === "lose"
-                ? { type: "photo", content: "", filePath: "media/cl.png" }
-                : { type: "text", content: "NGƯNG CA CHỐT LÃI!!!" }
-            );
-            createMessage("win", moneyValueTmp + "", 1000, 3000);
-            const gameResultFakeScreenshot = await captureScreen();
-            fakeTasks.push({
-              type: "text",
-              content: `${bestType === "PLAYER" ? "CON" : "CÁI"
-                } ${moneyValueTmp}`,
-            });
-            fakeTasks.push({
-              type: "screenshot",
-              data: gameResultFakeScreenshot,
-            });
-            fakeTasks.push({
-              type: "text",
-              content: bestType !== "TIE" ? `H +${moneyValueTmp}` : `HOA +0`,
-            });
-          }
-
-          console.log("Tasks sau khi có kết quả:", tasks, fakeTasks);
-          observer.disconnect();
-          messageIds.push(...(await Promise.all([
-            bot.runTasksForMainGroup(() => { }, tasks),
-            bot.runTasksForFakeGroup(() => { }, fakeTasks),
-          ])).flat());
-
-          console.log("Message IDs:", messageIds);
-
-          isProcessing = false;
-          if (isRunOneTime) {
-            console.log("Single run mode enabled, stopping automation...");
-
-            // Notify the electron app to stop automation
-            if (window.wsComm) {
-              window.wsComm.notifyAppOfAction('stopAutomation', {
-                reason: 'singleRunCompleted',
-                timestamp: Date.now()
-              });
-            } else {
-              // Send message to background script to notify main app
-              chrome.runtime.sendMessage({
-                type: 'stopAutomation',
-                message: 'Single run completed, stopping automation'
-              });
-            }
-
-            return;
-          }
-          console.log("Rejoining room...");
-          runTimeout = setTimeout(async () => {
-            await setStorageData("isTrigger", true);
-            chrome.runtime.sendMessage({ type: "reloadSession" });
-            // // Thoát phòng
-            // const btnOut = doc.querySelector("#goHome2");
-            // console.log("Exiting room...", btnOut);
-
-            // if (btnOut) {
-            //   btnOut.click();
-            // }
-            // console.log("Room exited, waiting for next join...");
-            // joinRoom();
-            // send
-          }, notificationTime * 60 * 1000);
-        }
-      });
-
-      observer.observe(playerPoint, { attributes: true, childList: true });
-      observer.observe(bankerPoint, { attributes: true, childList: true });
-    };
-
-      // Start the waiting process
-    waitForGameInfoCardHidden();
-  }
 
   function listenResultPlayGame() {
     const doc = document.getElementById("iframeGame");
@@ -1316,9 +1377,11 @@ async function joinRoom() {
     }
   }
   (async () => {
-  while (!listenResultPlayGame()) {
-    // wait until the element is found
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-})();
+    while (!listenResultPlayGame()) {
+      // wait until the element is found
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  })();
+
+  
 }
