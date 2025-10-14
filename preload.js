@@ -8,5 +8,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     updateScheduler: (schedulerSettings) => ipcRenderer.invoke('update-scheduler', schedulerSettings),
     getSchedulerStatus: () => ipcRenderer.invoke('get-scheduler-status'),
     // Automation status notifications
-    onAutomationStatusUpdate: (callback) => ipcRenderer.on('automation-status-update', (_, data) => callback(data))
+    onAutomationStatusUpdate: (callback) => ipcRenderer.on('automation-status-update', (_, data) => callback(data)),
+    importScheduler: () => ipcRenderer.invoke('import-scheduler'),
 });
